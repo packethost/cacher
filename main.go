@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
+	"time"
 )
 
 func newFacility(code string) (*facility, error) {
@@ -144,6 +146,19 @@ func (f *facility) getIrbs() error {
 	return nil
 }
 
+func getMaxErrs() int {
+	sMaxErrs := os.Getenv("CACHER_MAX_ERRS")
+	if sMaxErrs == "" {
+		sMaxErrs = "5"
+	}
+
+	max, err := strconv.Atoi(sMaxErrs)
+	if err != nil {
+		panic("unable to convert CACHER_MAX_ERRS to int")
+	}
+	return max
+}
+
 func resolveVLANHelpers(code string) {
 	switch code {
 	case "ams1", "ewr1", "nrt1", "sjc1":
@@ -167,19 +182,48 @@ func main() {
 
 	resolveVLANHelpers(facility.Code)
 
+	fmt.Println("connectCache")
 	if err = connectCache(); err != nil {
 		panic(err)
 	}
-	if err = facility.getRacks(); err != nil {
-		panic(err)
-	}
-	if err = facility.getRackSwitches(); err != nil {
-		panic(err)
-	}
-	if err = facility.getIrbs(); err != nil {
-		panic(err)
-	}
-	if err = setCache(facility); err != nil {
-		panic(err)
+
+	errs := 0
+	maxErrs := getMaxErrs()
+	for {
+		if errs != 0 {
+			fmt.Fprintf(os.Stderr, "errs=%d\n", errs)
+			if errs > maxErrs {
+				panic("maximum consecutive error limit hit")
+			}
+		}
+
+		fmt.Println("starting fetch:", time.Now())
+		fmt.Println("getRacks")
+		if err = facility.getRacks(); err != nil {
+			fmt.Fprintf(os.Stderr, "%+v\n", err)
+			errs++
+			continue
+		}
+		fmt.Println("getRackSwitches")
+		if err = facility.getRackSwitches(); err != nil {
+			fmt.Fprintf(os.Stderr, "%+v\n", err)
+			errs++
+			continue
+		}
+		fmt.Println("getIrbs")
+		if err = facility.getIrbs(); err != nil {
+			fmt.Fprintf(os.Stderr, "%+v\n", err)
+			errs++
+			continue
+		}
+		fmt.Println("setCache")
+		if err = setCache(facility); err != nil {
+			fmt.Fprintf(os.Stderr, "%+v\n", err)
+			errs++
+			continue
+		}
+		errs = 0
+		fmt.Println("done fetching, sleeping:", time.Now())
+		time.Sleep(60 * time.Second)
 	}
 }
