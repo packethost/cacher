@@ -162,6 +162,9 @@ func main() {
 		getNode = getNodeT1E
 	}
 
+	if err = connectCache(); err != nil {
+		panic(err)
+	}
 	if err = facility.getRacks(); err != nil {
 		panic(err)
 	}
@@ -169,6 +172,9 @@ func main() {
 		panic(err)
 	}
 	if err = facility.getIrbs(); err != nil {
+		panic(err)
+	}
+	if err = setCache(facility); err != nil {
 		panic(err)
 	}
 }
