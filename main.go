@@ -144,12 +144,8 @@ func (f *facility) getIrbs() error {
 	return nil
 }
 
-func main() {
-	facility, err := newFacility(os.Getenv("PACKET_ENV"))
-	if err != nil {
-		panic(err)
-	}
-	switch facility.Code {
+func resolveVLANHelpers(code string) {
+	switch code {
 	case "ams1", "ewr1", "nrt1", "sjc1":
 		getMB = getMBT0
 		getMBC = getMBCT0
@@ -161,6 +157,15 @@ func main() {
 		getMBC = getMBCT1E
 		getNode = getNodeT1E
 	}
+}
+
+func main() {
+	facility, err := newFacility(os.Getenv("PACKET_ENV"))
+	if err != nil {
+		panic(err)
+	}
+
+	resolveVLANHelpers(facility.Code)
 
 	if err = connectCache(); err != nil {
 		panic(err)
