@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"strings"
+	"time"
 )
 
 const api = "https://api.packet.net/"
@@ -30,13 +34,46 @@ func get(v interface{}, uri ...string) error {
 	req.Header.Add("X-CONSUMER-TOKEN", os.Getenv("PACKET_CONSUMER_TOKEN"))
 	req.Header.Add("X-PACKET-STAFF", "true")
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
+	resp := httpCachedResponse(req)
+	if resp == nil {
+		resp, err = http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		httpCacheResponse(req, resp)
 	}
-
 	defer resp.Body.Close()
 	dec := json.NewDecoder(resp.Body)
 
 	return dec.Decode(&v)
+}
+
+// httpCacheKey returns the cache key for req.
+func httpCacheKey(req *http.Request) string {
+	return req.Method + " " + req.URL.String()
+}
+
+func httpCachedResponse(req *http.Request) *http.Response {
+	key := httpCacheKey(req)
+	d, err := cache.Get(key)
+	if err != nil {
+		return nil
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(bytes.NewBuffer(d)), req)
+	if err != nil {
+		cache.Delete(key)
+		return nil
+	}
+
+	return resp
+}
+
+func httpCacheResponse(req *http.Request, resp *http.Response) {
+	respBytes, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		return
+	}
+
+	cache.Set(httpCacheKey(req), respBytes, 5*time.Minute)
 }

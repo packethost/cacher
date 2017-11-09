@@ -7,7 +7,12 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/adelowo/onecache"
+	"github.com/adelowo/onecache/memory"
 )
+
+var cache onecache.Store
 
 func newFacility(code string) (*facility, error) {
 	v := map[string][]struct {
@@ -175,11 +180,12 @@ func resolveVLANHelpers(code string) {
 }
 
 func main() {
+	cache = memory.NewInMemoryStore(5 * time.Minute)
+
 	facility, err := newFacility(os.Getenv("PACKET_ENV"))
 	if err != nil {
 		panic(err)
 	}
-
 	resolveVLANHelpers(facility.Code)
 
 	fmt.Println("connectCache")

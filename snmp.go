@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +21,15 @@ type tableEntry struct {
 type table []tableEntry
 
 func getTable(host string) (table, error) {
+	if b, err := cache.Get(host); err == nil {
+		var t table
+		dec := json.NewDecoder(bytes.NewBuffer(b))
+		if err = dec.Decode(&t); err == nil {
+			return t, nil
+		}
+		cache.Delete(host)
+	}
+
 	g := &gosnmp.GoSNMP{
 		MaxOids:       gosnmp.MaxOids,
 		Port:          161,
@@ -60,6 +71,10 @@ func getTable(host string) (table, error) {
 		entry := tableEntry{uint(index), string(b)}
 		t = append(t, entry)
 
+	}
+
+	if b, err := json.Marshal(t); err != nil {
+		cache.Set(host, b, 5*time.Minute)
 	}
 
 	return t[:len(t)], nil
