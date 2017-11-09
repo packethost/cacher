@@ -1,0 +1,32 @@
+workspace:
+  base: /go
+  path: src/github.com/packethost/cacher
+
+pipeline:
+  lint:
+    image: golang:1.9-alpine
+    commands:
+      - apk add --update --upgrade --no-cache git
+      - go get -v -u github.com/alecthomas/gometalinter
+      - gometalinter --install
+      - gometalinter --errors --vendor --vendored-linters ./...
+      - gofmt -d *.go | (! grep '.')
+
+  test:
+    image: golang:1.9-alpine
+    commands:
+      - go test -v ./...
+
+  build:
+    image: golang:1.9-alpine
+    commands:
+      - CGO=0 go build
+
+  publish:
+    image: plugins/docker
+    registry: quay.io
+    repo: quay.io/packet/cacher
+    default_tags: true
+    when:
+      event: [push, tag]
+    secrets: [ docker_username, docker_password ]
