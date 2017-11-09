@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -10,6 +8,7 @@ import (
 
 	"github.com/adelowo/onecache"
 	"github.com/adelowo/onecache/memory"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -95,7 +94,7 @@ func (f *facility) getRackSwitches() error {
 		}
 		switches, err := getSwitchesInRack(core, rack.ID)
 		if err != nil {
-			return fmt.Errorf(`msg="failed to get rack switches", rack.id="%s", rack.name="%s" error="%s"\n`, rack.ID, rack.Name, err.Error())
+			return errors.Wrapf(err, `msg="failed to get rack switches" rack.id="%s" rack.name="%s"`, rack.ID, rack.Name)
 		}
 		rack.Switches = switches
 		f.Racks[rack.ID] = rack
@@ -139,7 +138,7 @@ func (f *facility) getIrbs() error {
 
 	for r := range results {
 		if r.err != nil {
-			return fmt.Errorf("failed to get irbs, hostname=%s, error=%v", r.hostname, r.err)
+			return errors.Wrap(r.err, r.hostname)
 		}
 		switchPorts[r.hostname] = r.ports
 	}
@@ -227,7 +226,14 @@ func main() {
 			sugar.Infow(task.name)
 			taskStart := time.Now()
 			if err = task.fn(); err != nil {
-				sugar.Errorw("failed", "error", err)
+				type stackTracer interface {
+					StackTrace() errors.StackTrace
+				}
+				if stacker, ok := err.(stackTracer); ok {
+					sugar.Errorw("failed", "error", err, "stack", stacker.StackTrace())
+				} else {
+					sugar.Errorw("failed", "error", err)
+				}
 				errored = true
 				break
 			}
