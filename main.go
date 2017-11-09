@@ -10,9 +10,13 @@ import (
 
 	"github.com/adelowo/onecache"
 	"github.com/adelowo/onecache/memory"
+	"go.uber.org/zap"
 )
 
-var cache onecache.Store
+var (
+	cache onecache.Store
+	sugar *zap.SugaredLogger
+)
 
 func newFacility(code string) (*facility, error) {
 	v := map[string][]struct {
@@ -180,6 +184,10 @@ func resolveVLANHelpers(code string) {
 }
 
 func main() {
+	log, _ := zap.NewProduction()
+	sugar = log.Sugar()
+	defer log.Sync()
+
 	cache = memory.NewInMemoryStore(5 * time.Minute)
 
 	facility, err := newFacility(os.Getenv("PACKET_ENV"))
@@ -188,7 +196,7 @@ func main() {
 	}
 	resolveVLANHelpers(facility.Code)
 
-	fmt.Println("connectCache")
+	sugar.Infow("connectCache")
 	if err = connectCache(); err != nil {
 		panic(err)
 	}
@@ -197,13 +205,14 @@ func main() {
 	maxErrs := getMaxErrs()
 	for {
 		if errs != 0 {
-			fmt.Printf("errs=%d\n", errs)
+			sugar.Infow("checking error count", "errs", errs)
 			if errs > maxErrs {
-				panic("maximum consecutive error limit hit")
+				sugar.Errorw("maximum consecutive error limit reached", "errs", errs)
+				os.Exit(1)
 			}
 		}
 
-		fmt.Println("starting fetch")
+		sugar.Infow("starting fetch")
 		start := time.Now()
 		errored := false
 		for _, task := range []struct {
@@ -215,17 +224,17 @@ func main() {
 			{"getIrbs", facility.getIrbs},
 			{"setCache", func() error { return setCache(facility) }},
 		} {
-			fmt.Println(task.name)
+			sugar.Infow(task.name)
 			taskStart := time.Now()
 			if err = task.fn(); err != nil {
-				fmt.Printf("failed, error=%v\n", err)
+				sugar.Errorw("failed", "error", err)
 				errored = true
 				break
 			}
-			fmt.Printf("done, duration=%v\n", time.Since(taskStart))
+			sugar.Infow("done", "duration", time.Since(taskStart))
 		}
 		if !errored {
-			fmt.Printf("done fetching, duration=%v\n", time.Since(start))
+			sugar.Infow("done fetching", "duration", time.Since(start))
 			errs = 0
 		} else {
 			errs++
