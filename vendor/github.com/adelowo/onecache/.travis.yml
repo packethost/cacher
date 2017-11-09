@@ -1,0 +1,23 @@
+language: go
+
+sudo: false
+
+services:
+  - redis-server
+  - memcached
+  
+before_install:
+  - go get github.com/mattn/goveralls
+
+before_script:
+  - go vet ./...
+
+go:
+  - 1.7
+  - 1.7.x
+  - 1.8
+  - 1.8.x
+  - tip
+
+script:
+    - $HOME/gopath/bin/goveralls -service=travis-ci
