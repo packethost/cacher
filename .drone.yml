@@ -22,11 +22,20 @@ pipeline:
     commands:
       - CGO=0 go build
 
-  publish:
+  publish_latest:
     image: plugins/docker
     registry: quay.io
     repo: quay.io/packet/cacher
-    default_tags: true
+    tags: latest
     when:
-      event: [push, tag]
+      event: [push]
+    secrets: [ docker_username, docker_password ]
+
+  publish_tag:
+    image: plugins/docker
+    registry: quay.io
+    repo: quay.io/packet/cacher
+    tags: ${DRONE_TAG}
+    when:
+      event: [tag]
     secrets: [ docker_username, docker_password ]
