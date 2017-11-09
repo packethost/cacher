@@ -197,39 +197,39 @@ func main() {
 	maxErrs := getMaxErrs()
 	for {
 		if errs != 0 {
-			fmt.Fprintf(os.Stderr, "errs=%d\n", errs)
+			fmt.Printf("errs=%d\n", errs)
 			if errs > maxErrs {
 				panic("maximum consecutive error limit hit")
 			}
 		}
 
-		fmt.Println("starting fetch:", time.Now())
-		fmt.Println("getRacks")
-		if err = facility.getRacks(); err != nil {
-			fmt.Fprintf(os.Stderr, "%+v\n", err)
-			errs++
-			continue
+		fmt.Println("starting fetch")
+		start := time.Now()
+		errored := false
+		for _, task := range []struct {
+			name string
+			fn   func() error
+		}{
+			{"getRacks", facility.getRacks},
+			{"getRackSwitches", facility.getRackSwitches},
+			{"getIrbs", facility.getIrbs},
+			{"setCache", func() error { return setCache(facility) }},
+		} {
+			fmt.Println(task.name)
+			taskStart := time.Now()
+			if err = task.fn(); err != nil {
+				fmt.Printf("failed, error=%v\n", err)
+				errored = true
+				break
+			}
+			fmt.Printf("done, duration=%v\n", time.Since(taskStart))
 		}
-		fmt.Println("getRackSwitches")
-		if err = facility.getRackSwitches(); err != nil {
-			fmt.Fprintf(os.Stderr, "%+v\n", err)
+		if !errored {
+			fmt.Printf("done fetching, duration=%v\n", time.Since(start))
+			errs = 0
+		} else {
 			errs++
-			continue
 		}
-		fmt.Println("getIrbs")
-		if err = facility.getIrbs(); err != nil {
-			fmt.Fprintf(os.Stderr, "%+v\n", err)
-			errs++
-			continue
-		}
-		fmt.Println("setCache")
-		if err = setCache(facility); err != nil {
-			fmt.Fprintf(os.Stderr, "%+v\n", err)
-			errs++
-			continue
-		}
-		errs = 0
-		fmt.Println("done fetching, sleeping:", time.Now())
 		time.Sleep(60 * time.Second)
 	}
 }
