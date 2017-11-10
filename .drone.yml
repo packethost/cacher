@@ -4,6 +4,7 @@ workspace:
 
 pipeline:
   lint:
+    group: ci
     image: golang:1.9-alpine
     commands:
       - apk add --update --upgrade --no-cache git
@@ -13,11 +14,13 @@ pipeline:
       - gofmt -d *.go | (! grep '.')
 
   test:
+    group: ci
     image: golang:1.9-alpine
     commands:
       - go test -v ./...
 
   build:
+    group: ci
     image: golang:1.9-alpine
     commands:
       - CGO=0 go build
