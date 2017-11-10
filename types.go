@@ -17,7 +17,7 @@ type port struct {
 		Name     string `json:"name"`
 		State    string `json:"state"`
 		Type     string `json:"type"`
-	}
+	} `json:"hardware"`
 	Instance hrefID `json:"instance"`
 	Owner    hrefID `json:"owner"`
 	Project  hrefID `json:"project"`
