@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/soniah/gosnmp"
 )
 
@@ -50,13 +51,13 @@ func getTable(host string) (table, error) {
 
 	err := g.Connect()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, host)
 	}
 	defer g.Conn.Close()
 
 	pdus, err := g.BulkWalkAll(oid)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, host)
 	}
 
 	t := make([]tableEntry, 0, len(pdus))
@@ -65,7 +66,7 @@ func getTable(host string) (table, error) {
 		var index int
 		index, err = strconv.Atoi(sindex)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, host)
 		}
 		b := pdu.Value.([]byte)
 		entry := tableEntry{uint(index), string(b)}
