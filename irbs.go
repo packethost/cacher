@@ -149,6 +149,7 @@ func getIrbPort(subdomain string, entry tableEntry) (port, bool, error) {
 		return port{}, false, nil
 	}
 	p.Name = entry.Name
+	p.Index = entry.Index
 
 	return p, true, nil
 }
