@@ -9,6 +9,7 @@ type port struct {
 	hrefID
 	Iface    string `json:"iface"`
 	Name     string `json:"name"`
+	Index    uint   `json:"index"`
 	Type     string `json:"type"`
 	Hardware struct {
 		hrefID
