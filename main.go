@@ -91,7 +91,7 @@ func (f *facility) getRackSwitches() error {
 	for _, rack := range f.Racks {
 		core := false
 		switch f.Code {
-		case "ams1", "ewr1", "nrt1", "sjc1":
+		case "ams1", "ewr1", "nrt1", "sjc1", "lab1":
 			core = true
 		}
 		switches, err := getSwitchesInRack(core, rack.ID)
