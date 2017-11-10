@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -190,8 +191,11 @@ func main() {
 
 	cache = memory.NewInMemoryStore(5 * time.Minute)
 
-	if url := os.Getenv("PACKET_API"); url != "" && url != api {
+	if url := os.Getenv("PACKET_API_URL"); url != "" && url != api {
 		api = url
+		if !strings.HasSuffix(api, "/") {
+			api += "/"
+		}
 	}
 
 	facility, err := newFacility(os.Getenv("PACKET_ENV"))
