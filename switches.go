@@ -54,6 +54,9 @@ func getSwitchesInRack(core bool, rackID string) (map[string]swtch, error) {
 				return nil, err
 			}
 			for _, sw := range sws {
+				if sw.Hostname == "" {
+					continue
+				}
 				ports, err := getSwitchPorts(sw.HRef)
 				if err != nil {
 					return nil, err
