@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	api   = "https://api.packet.net/"
 	cache onecache.Store
 	sugar *zap.SugaredLogger
 )
@@ -188,6 +189,10 @@ func main() {
 	defer log.Sync()
 
 	cache = memory.NewInMemoryStore(5 * time.Minute)
+
+	if url := os.Getenv("PACKET_API"); url != "" && url != api {
+		api = url
+	}
 
 	facility, err := newFacility(os.Getenv("PACKET_ENV"))
 	if err != nil {

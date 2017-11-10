@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const api = "https://api.packet.net/"
-
 func query(args ...string) string {
 	if len(args) == 0 {
 		return ""
