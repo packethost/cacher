@@ -87,14 +87,18 @@ func (f *facility) getRacks() error {
 	return nil
 }
 
+func (f *facility) isCore() bool {
+	var core bool
+	switch f.Code {
+	case "ams1", "ewr1", "nrt1", "sjc1", "lab1":
+		core = true
+	}
+	return core
+}
+
 func (f *facility) getRackSwitches() error {
 	for _, rack := range f.Racks {
-		core := false
-		switch f.Code {
-		case "ams1", "ewr1", "nrt1", "sjc1", "lab1":
-			core = true
-		}
-		switches, err := getSwitchesInRack(core, rack.ID)
+		switches, err := getSwitchesInRack(f.isCore(), rack.ID)
 		if err != nil {
 			return errors.Wrapf(err, `msg="failed to get rack switches" rack.id="%s" rack.name="%s"`, rack.ID, rack.Name)
 		}
@@ -169,14 +173,13 @@ func getMaxErrs() int {
 	return max
 }
 
-func resolveVLANHelpers(code string) {
-	switch code {
-	case "ams1", "ewr1", "nrt1", "sjc1":
+func resolveVLANHelpers(core bool) {
+	if core {
 		getMB = getMBT0
 		getMBC = getMBCT0
 		getNode = getNodeT0
 		irbRegex = irbRegexT0
-	default:
+	} else {
 		irbRegex = irbRegexT1E
 		getMB = getMBT1E
 		getMBC = getMBCT1E
@@ -202,7 +205,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	resolveVLANHelpers(facility.Code)
+	resolveVLANHelpers(facility.isCore())
 
 	sugar.Infow("connectCache")
 	if err = connectCache(); err != nil {
