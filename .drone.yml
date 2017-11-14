@@ -23,7 +23,7 @@ pipeline:
     group: ci
     image: golang:1.9-alpine
     commands:
-      - CGO=0 go build
+      - CGO_ENABLED=0 go build
 
   publish_latest:
     image: plugins/docker
