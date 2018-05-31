@@ -2,12 +2,16 @@ package main
 
 import (
 	"database/sql"
+	"net"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -61,8 +65,9 @@ func main() {
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 
+	facility := os.Getenv("FACILITY")
 	sugar.Infow("starting fetch")
-	data, err := fetchFacility(client, api, os.Getenv("FACILITY"))
+	data, err := fetchFacility(client, api, facility)
 	sugar.Info("done fetching")
 	if err != nil {
 		sugar.Info(err)
@@ -74,5 +79,23 @@ func main() {
 	}
 	sugar.Info("done copying")
 
-	select {}
+	lis, err := net.Listen("tcp", clientPort)
+	if err != nil {
+		sugar.Fatalf("failed to listen: %v", err)
+	}
+
+	tc, err := credentials.NewServerTLSFromFile("/certs/"+facility+"/server.pem", "/certs/"+facility+"/server-key.pem")
+	if err != nil {
+		sugar.Fatalf("failed to read TLS files: %v", err)
+	}
+	s := grpc.NewServer(grpc.Creds(tc))
+	cacher.RegisterCacherServer(s, &server{
+		db:     db,
+		packet: client,
+	})
+
+	sugar.Info("serving grpc")
+	if err := s.Serve(lis); err != nil {
+		sugar.Fatalf("failed to serve: %v", err)
+	}
 }
