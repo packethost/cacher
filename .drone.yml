@@ -27,7 +27,8 @@ pipeline:
     commands:
       - CGO_ENABLED=0 go build
 
-  publish_build:
+  publish_cacher_build:
+    group: publish
     image: plugins/docker
     registry: quay.io
     repo: quay.io/packet/cacher
@@ -36,10 +37,35 @@ pipeline:
       event: [push]
     secrets: [docker_username, docker_password]
 
-  publish_tag:
+  publish_db_build:
+    group: publish
+    image: plugins/docker
+    context: db
+    dockerfile: db/Dockerfile
+    registry: quay.io
+    repo: quay.io/packet/cacher-db
+    tags: ${DRONE_BRANCH/\//-}
+    when:
+      event: [push]
+    secrets: [docker_username, docker_password]
+
+  publish_cacher_tag:
+    group: publish
     image: plugins/docker
     registry: quay.io
     repo: quay.io/packet/cacher
+    tags: ${DRONE_TAG}
+    when:
+      event: [tag]
+    secrets: [docker_username, docker_password]
+
+  publish_db_tag:
+    group: publish
+    image: plugins/docker
+    context: db
+    dockerfile: db/Dockerfile
+    registry: quay.io
+    repo: quay.io/packet/cacher-db
     tags: ${DRONE_TAG}
     when:
       event: [tag]
