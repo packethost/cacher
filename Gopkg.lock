@@ -2,28 +2,10 @@
 
 
 [[projects]]
-  name = "github.com/adelowo/onecache"
-  packages = [".","memory"]
-  revision = "faf3e8475cc574f6867afbea864937357ad8de83"
-  version = "2.3.2"
-
-[[projects]]
-  name = "github.com/garyburd/redigo"
-  packages = ["internal","redis"]
-  revision = "47dc60e71eed504e3ef8e77ee3c6fe720f3be57f"
-  version = "v1.3.0"
-
-[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/soniah/gosnmp"
-  packages = ["."]
-  revision = "50ec78ff97e095b35e845359cc1958627799d19d"
 
 [[projects]]
   name = "go.uber.org/atomic"
@@ -39,13 +21,20 @@
 
 [[projects]]
   name = "go.uber.org/zap"
-  packages = [".","buffer","internal/bufferpool","internal/color","internal/exit","zapcore"]
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore"
+  ]
   revision = "35aad584952c3e7020db7b839f6b102de6271f89"
   version = "v1.7.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1bc639670d2bf90c8f6129edf9a830011414620d4ab4a4dabae71f9df9825f99"
+  inputs-digest = "58199fab3b1675e3e65bc3a96df3ede23ce05fdda0520a21d70243a778f07d07"
   solver-name = "gps-cdcl"
   solver-version = 1

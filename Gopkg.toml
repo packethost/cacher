@@ -25,20 +25,8 @@
   go-tests = true
 
 [[constraint]]
-  name = "github.com/adelowo/onecache"
-  version = "2.3.2"
-
-[[constraint]]
-  name = "github.com/garyburd/redigo"
-  version = "1.3.0"
-
-[[constraint]]
   name = "github.com/pkg/errors"
   version = "0.8.0"
-
-[[constraint]]
-  name = "github.com/soniah/gosnmp"
-  branch = "master"
 
 [[constraint]]
   name = "go.uber.org/zap"
