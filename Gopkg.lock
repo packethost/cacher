@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/packethost/packngo"
+  packages = ["."]
+  revision = "dff6ec250ba6085b63b56b5f1e2e69c6dad7569f"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
@@ -35,6 +41,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "58199fab3b1675e3e65bc3a96df3ede23ce05fdda0520a21d70243a778f07d07"
+  inputs-digest = "59da77dd65bd0c089cfd5ee54c113f23401ad3fbe0cde25158842d651e55f3a8"
   solver-name = "gps-cdcl"
   solver-version = 1

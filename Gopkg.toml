@@ -25,6 +25,10 @@
   go-tests = true
 
 [[constraint]]
+  name = "github.com/packethost/packngo"
+  branch = "master"
+
+[[constraint]]
   name = "github.com/pkg/errors"
   version = "0.8.0"
 
