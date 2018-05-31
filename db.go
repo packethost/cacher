@@ -110,3 +110,29 @@ func deleteFromDB(ctx context.Context, db *sql.DB, id string) error {
 	}
 	return nil
 }
+
+func insertIntoDB(ctx context.Context, db *sql.DB, data string) error {
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return errors.Wrap(err, "BEGIN transaction")
+	}
+
+	_, err = tx.Exec(`
+	INSERT INTO hardware (inserted_at, id, data)
+	VALUES
+		($1, ($2::jsonb ->> 'id')::uuid, $2)
+	ON CONFLICT (id)
+	DO
+	UPDATE SET
+		(inserted_at, deleted_at, data) = ($1, NULL, $2);
+	`, time.Now(), data)
+	if err != nil {
+		return errors.Wrap(err, "INSERT")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return errors.Wrap(err, "COMMIT")
+	}
+	return nil
+}
