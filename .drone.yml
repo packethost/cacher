@@ -1,3 +1,5 @@
+---
+
 workspace:
   base: /go
   path: src/github.com/packethost/cacher
@@ -5,7 +7,7 @@ workspace:
 pipeline:
   lint:
     group: ci
-    image: golang:1.9-alpine
+    image: golang:1.10-alpine
     commands:
       - apk add --update --upgrade --no-cache git
       - go get -v -u github.com/alecthomas/gometalinter
@@ -15,24 +17,24 @@ pipeline:
 
   test:
     group: ci
-    image: golang:1.9-alpine
+    image: golang:1.10-alpine
     commands:
       - go test -v ./...
 
   build:
     group: ci
-    image: golang:1.9-alpine
+    image: golang:1.10-alpine
     commands:
       - CGO_ENABLED=0 go build
 
-  publish_latest:
+  publish_build:
     image: plugins/docker
     registry: quay.io
     repo: quay.io/packet/cacher
-    tags: latest
+    tags: ${DRONE_BRANCH/\//-}
     when:
       event: [push]
-    secrets: [ docker_username, docker_password ]
+    secrets: [docker_username, docker_password]
 
   publish_tag:
     image: plugins/docker
@@ -41,4 +43,4 @@ pipeline:
     tags: ${DRONE_TAG}
     when:
       event: [tag]
-    secrets: [ docker_username, docker_password ]
+    secrets: [docker_username, docker_password]
