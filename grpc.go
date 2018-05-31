@@ -92,5 +92,11 @@ func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hard
 		return &cacher.Hardware{}, errors.New("DB is not ready")
 	}
 
-	return &cacher.Hardware{}, nil
+	j, err := getByMAC(ctx, s.db, in.MAC)
+	if err != nil {
+		sugar.Error(err)
+		return &cacher.Hardware{}, err
+	}
+
+	return &cacher.Hardware{JSON: j}, nil
 }
