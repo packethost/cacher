@@ -64,6 +64,17 @@ func copyin(db *sql.DB, data []map[string]interface{}) error {
 		return errors.Wrap(err, "performing COPY")
 	}
 
+	// Remove duplicates, keeping what has already been inserted via insertIntoDB since startup
+	_, err = tx.Exec(`
+	DELETE FROM hardware a
+	USING hardware b
+	WHERE a.id IS NULL
+	AND (a.data ->> 'id')::uuid = b.id
+	`)
+	if err != nil {
+		return errors.Wrap(err, "delete overwrite")
+	}
+
 	_, err = tx.Exec(`
 	UPDATE hardware
 	SET (inserted_at, id) =
