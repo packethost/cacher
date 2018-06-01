@@ -3,14 +3,17 @@ package main
 import (
 	"database/sql"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -83,7 +86,10 @@ func setupGRPC(client *packngo.Client, db *sql.DB, facility string) *grpc.Server
 	if err != nil {
 		sugar.Fatalf("failed to read TLS files: %v", err)
 	}
-	s := grpc.NewServer(grpc.Creds(tc))
+	s := grpc.NewServer(grpc.Creds(tc),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+	)
 	cacher.RegisterCacherServer(s, &server{
 		packet: client,
 		db:     db,
@@ -91,7 +97,12 @@ func setupGRPC(client *packngo.Client, db *sql.DB, facility string) *grpc.Server
 			ingestFacility(client, db, api, facility)
 		},
 	})
+	grpc_prometheus.Register(s)
 	return s
+}
+
+func setupPromHTTP() {
+	http.Handle("/metrics", promhttp.Handler())
 }
 
 func main() {
@@ -113,6 +124,7 @@ func main() {
 	db := connectDB()
 	facility := os.Getenv("FACILITY")
 	s := setupGRPC(client, db, facility)
+	setupPromHTTP()
 
 	lis, err := net.Listen("tcp", clientPort)
 	if err != nil {
