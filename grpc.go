@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"sync"
 
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
@@ -17,14 +18,33 @@ const (
 type server struct {
 	packet *packngo.Client
 	db     *sql.DB
+
+	once   sync.Once
+	ingest func()
+
+	mu      sync.RWMutex
+	dbReady bool
 }
 
 //go:generate protoc -I protos/cacher protos/cacher/cacher.proto --go_out=plugins=grpc:protos/cacher
 
 // Push implements cacher.CacherServer
 func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empty, error) {
-	sugar.Info(in.Data)
+	s.once.Do(func() {
+		sugar.Info("ingestion goroutine is starting")
+		// in a goroutine to not block Push and possibly timeout
+		go func() {
+			sugar.Info("ingestion is starting")
+			s.ingest()
+			s.mu.Lock()
+			s.dbReady = true
+			s.mu.Unlock()
+			sugar.Info("ingestion is done")
+		}()
+		sugar.Info("ingestion goroutine is started")
+	})
 
+	sugar.Info(in.Data)
 	var h struct {
 		ID    string
 		State string
@@ -65,5 +85,12 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 
 // ByMAC implements cacher.CacherServer
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	s.mu.RLock()
+	ready := s.dbReady
+	s.mu.RUnlock()
+	if !ready {
+		return &cacher.Hardware{}, errors.New("DB is not ready")
+	}
+
 	return &cacher.Hardware{}, nil
 }

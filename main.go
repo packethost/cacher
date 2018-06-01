@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
@@ -30,6 +31,32 @@ func getMaxErrs() int {
 		panic("unable to convert CACHER_MAX_ERRS to int")
 	}
 	return max
+}
+
+func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
+	var errCount int
+	for errCount = 0; errCount < getMaxErrs(); errCount++ {
+		sugar.Infow("starting fetch")
+		data, err := fetchFacility(client, api, facility)
+		sugar.Info("done fetching")
+		if err != nil {
+			sugar.Info(err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		sugar.Info("copying")
+		if err = copyin(db, data); err != nil {
+			sugar.Info(err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		sugar.Info("done copying")
+		break
+	}
+	if errCount >= getMaxErrs() {
+		sugar.Fatal("maximum fetch/copy errors reached")
+	}
 }
 
 func main() {
@@ -66,19 +93,6 @@ func main() {
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 
 	facility := os.Getenv("FACILITY")
-	sugar.Infow("starting fetch")
-	data, err := fetchFacility(client, api, facility)
-	sugar.Info("done fetching")
-	if err != nil {
-		sugar.Info(err)
-	}
-
-	sugar.Info("copying")
-	if err = copyin(db, data); err != nil {
-		sugar.Info(err)
-	}
-	sugar.Info("done copying")
-
 	lis, err := net.Listen("tcp", clientPort)
 	if err != nil {
 		sugar.Fatalf("failed to listen: %v", err)
@@ -90,8 +104,11 @@ func main() {
 	}
 	s := grpc.NewServer(grpc.Creds(tc))
 	cacher.RegisterCacherServer(s, &server{
-		db:     db,
 		packet: client,
+		db:     db,
+		ingest: func() {
+			ingestFacility(client, db, api, facility)
+		},
 	})
 
 	sugar.Info("serving grpc")
