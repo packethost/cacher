@@ -59,22 +59,7 @@ func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
 	}
 }
 
-func main() {
-	log, err := zap.NewProduction()
-	if err != nil {
-		panic(err)
-	}
-
-	sugar = log.Sugar()
-	defer log.Sync()
-
-	if url := os.Getenv("PACKET_API_URL"); url != "" && url != api {
-		api = url
-		if !strings.HasSuffix(api, "/") {
-			api += "/"
-		}
-	}
-
+func connectDB() *sql.DB {
 	connStr := strings.Join([]string{
 		"dbname=" + os.Getenv("POSTGRES_DB"),
 		"host=" + os.Getenv("POSTGRES_HOST"),
@@ -89,15 +74,10 @@ func main() {
 	if err := truncate(db); err != nil {
 		panic(err)
 	}
+	return db
+}
 
-	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
-
-	facility := os.Getenv("FACILITY")
-	lis, err := net.Listen("tcp", clientPort)
-	if err != nil {
-		sugar.Fatalf("failed to listen: %v", err)
-	}
-
+func setupGRPC(client *packngo.Client, db *sql.DB, facility string) *grpc.Server {
 	tc, err := credentials.NewServerTLSFromFile("/certs/"+facility+"/server.pem", "/certs/"+facility+"/server-key.pem")
 	if err != nil {
 		sugar.Fatalf("failed to read TLS files: %v", err)
@@ -110,6 +90,33 @@ func main() {
 			ingestFacility(client, db, api, facility)
 		},
 	})
+	return s
+}
+
+func main() {
+	log, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+	sugar = log.Sugar()
+	defer log.Sync()
+
+	if url := os.Getenv("PACKET_API_URL"); url != "" && url != api {
+		api = url
+		if !strings.HasSuffix(api, "/") {
+			api += "/"
+		}
+	}
+
+	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
+	db := connectDB()
+	facility := os.Getenv("FACILITY")
+	s := setupGRPC(client, db, facility)
+
+	lis, err := net.Listen("tcp", clientPort)
+	if err != nil {
+		sugar.Fatalf("failed to listen: %v", err)
+	}
 
 	sugar.Info("serving grpc")
 	if err := s.Serve(lis); err != nil {
