@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -117,6 +118,14 @@ func main() {
 	if err != nil {
 		sugar.Fatalf("failed to listen: %v", err)
 	}
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs)
+	go func() {
+		sig := <-sigs
+		sugar.Infow("signal received, stopping server", "signal", sig.String())
+		s.GracefulStop()
+	}()
 
 	sugar.Info("serving grpc")
 	if err := s.Serve(lis); err != nil {
