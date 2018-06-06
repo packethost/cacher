@@ -1,0 +1,22 @@
+syntax = "proto3";
+package cacher;
+
+service Cacher {
+	rpc Push (PushRequest) returns (Empty);
+	rpc ByMAC(GetRequest) returns (Hardware);
+}
+
+message PushRequest {
+	string data = 1;
+}
+
+message Empty {
+}
+
+message GetRequest {
+	string MAC = 1;
+}
+
+message Hardware {
+	string JSON = 1;
+}
