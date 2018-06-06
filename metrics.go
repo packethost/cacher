@@ -68,9 +68,9 @@ func setupMetrics(facility string) {
 	initObserverLabels(cacheDuration, labels)
 	initCounterLabels(cacheHits, labels)
 
-	// Method ByMAC
 	labels = []prometheus.Labels{
 		{"method": "ByMAC", "op": "get"},
+		{"method": "ByIP", "op": "get"},
 	}
 	initCounterLabels(cacheErrors, labels)
 	initGaugeLabels(cacheInFlight, labels)

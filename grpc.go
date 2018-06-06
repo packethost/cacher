@@ -133,7 +133,30 @@ func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hard
 
 // ByIP implements cacher.CacherServer
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return &cacher.Hardware{}, nil
+	labels := prometheus.Labels{"op": "get", "method": "ByIP"}
+
+	cacheTotals.With(labels).Inc()
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
+
+	s.mu.RLock()
+	ready := s.dbReady
+	s.mu.RUnlock()
+	if !ready {
+		cacheStalls.With(labels).Inc()
+		return &cacher.Hardware{}, errors.New("DB is not ready")
+	}
+
+	timer := prometheus.NewTimer(cacheDuration.With(labels))
+	defer timer.ObserveDuration()
+	j, err := getByMAC(ctx, s.db, in.MAC)
+	if err != nil {
+		cacheErrors.With(labels).Inc()
+		return &cacher.Hardware{}, err
+	}
+
+	cacheHits.With(labels).Inc()
+	return &cacher.Hardware{JSON: j}, nil
 }
 
 // ALL implements cacher.CacherServer
