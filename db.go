@@ -184,3 +184,40 @@ func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
 
 	return "", err
 }
+
+func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
+	p := `
+	{
+	  "instance": {
+	    "ip_addresses": [
+	      {
+		"address": "` + ip + `"
+	      }
+	    ]
+	  }
+	}
+	`
+	row := db.QueryRowContext(ctx, `
+	SELECT data
+	FROM hardware
+	WHERE
+		deleted_at IS NULL
+	AND
+		data @> $1`, p)
+
+	buf := []byte{}
+	err := row.Scan(&buf)
+	if err == nil {
+		sugar.Info("got data:", string(buf))
+		return string(buf), nil
+	}
+
+	if err != sql.ErrNoRows {
+		err = errors.Wrap(err, "SELECT")
+		sugar.Error(err)
+	} else {
+		err = nil
+	}
+
+	return "", err
+}
