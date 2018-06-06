@@ -147,3 +147,40 @@ func insertIntoDB(ctx context.Context, db *sql.DB, data string) error {
 	}
 	return nil
 }
+
+func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
+	p := `
+	{
+	  "network_ports": [
+	    {
+	      "data": {
+		"mac": "` + mac + `"
+	      }
+	    }
+	  ]
+	}
+	`
+	row := db.QueryRowContext(ctx, `
+	SELECT data
+	FROM hardware
+	WHERE
+		deleted_at IS NULL
+	AND
+		data @> $1`, p)
+
+	buf := []byte{}
+	err := row.Scan(&buf)
+	if err == nil {
+		sugar.Info("got data:", string(buf))
+		return string(buf), nil
+	}
+
+	if err != sql.ErrNoRows {
+		err = errors.Wrap(err, "SELECT")
+		sugar.Error(err)
+	} else {
+		err = nil
+	}
+
+	return "", err
+}
