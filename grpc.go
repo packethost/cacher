@@ -161,5 +161,30 @@ func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardw
 
 // ALL implements cacher.CacherServer
 func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
+	labels := prometheus.Labels{"op": "get", "method": "All"}
+
+	cacheTotals.With(labels).Inc()
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
+
+	s.mu.RLock()
+	ready := s.dbReady
+	s.mu.RUnlock()
+	if !ready {
+		cacheStalls.With(labels).Inc()
+		return errors.New("DB is not ready")
+	}
+
+	timer := prometheus.NewTimer(cacheDuration.With(labels))
+	defer timer.ObserveDuration()
+	err := getAll(s.db, func(j string) error {
+		return stream.Send(&cacher.Hardware{JSON: j})
+	})
+	if err != nil {
+		cacheErrors.With(labels).Inc()
+		return err
+	}
+
+	cacheHits.With(labels).Inc()
 	return nil
 }
