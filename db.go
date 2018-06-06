@@ -221,3 +221,40 @@ func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
 
 	return "", err
 }
+
+func getAll(db *sql.DB, fn func(string) error) error {
+	rows, err := db.Query(`
+	SELECT data
+	FROM hardware
+	WHERE
+		deleted_at IS NULL
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	defer rows.Close()
+	buf := []byte{}
+	for rows.Next() {
+		err = rows.Scan(&buf)
+		if err != nil {
+			err = errors.Wrap(err, "SELECT")
+			sugar.Error(err)
+			return err
+		}
+
+		sugar.Info("got data:", string(buf))
+		err = fn(string(buf))
+		if err != nil {
+			return err
+		}
+
+	}
+
+	err = rows.Err()
+	if err == sql.ErrNoRows {
+		err = nil
+	}
+	return err
+}
