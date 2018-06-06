@@ -130,3 +130,13 @@ func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hard
 	cacheHits.With(labels).Inc()
 	return &cacher.Hardware{JSON: j}, nil
 }
+
+// ByIP implements cacher.CacherServer
+func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	return &cacher.Hardware{}, nil
+}
+
+// ALL implements cacher.CacherServer
+func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
+	return nil
+}

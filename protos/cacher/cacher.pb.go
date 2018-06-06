@@ -34,7 +34,7 @@ func (m *PushRequest) Reset()         { *m = PushRequest{} }
 func (m *PushRequest) String() string { return proto.CompactTextString(m) }
 func (*PushRequest) ProtoMessage()    {}
 func (*PushRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_c925df15ed844542, []int{0}
+	return fileDescriptor_cacher_8100dabbaf760b4d, []int{0}
 }
 func (m *PushRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PushRequest.Unmarshal(m, b)
@@ -71,7 +71,7 @@ func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
 func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_c925df15ed844542, []int{1}
+	return fileDescriptor_cacher_8100dabbaf760b4d, []int{1}
 }
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Empty.Unmarshal(m, b)
@@ -93,6 +93,7 @@ var xxx_messageInfo_Empty proto.InternalMessageInfo
 
 type GetRequest struct {
 	MAC                  string   `protobuf:"bytes,1,opt,name=MAC" json:"MAC,omitempty"`
+	IP                   string   `protobuf:"bytes,2,opt,name=IP" json:"IP,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -102,7 +103,7 @@ func (m *GetRequest) Reset()         { *m = GetRequest{} }
 func (m *GetRequest) String() string { return proto.CompactTextString(m) }
 func (*GetRequest) ProtoMessage()    {}
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_c925df15ed844542, []int{2}
+	return fileDescriptor_cacher_8100dabbaf760b4d, []int{2}
 }
 func (m *GetRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRequest.Unmarshal(m, b)
@@ -129,6 +130,13 @@ func (m *GetRequest) GetMAC() string {
 	return ""
 }
 
+func (m *GetRequest) GetIP() string {
+	if m != nil {
+		return m.IP
+	}
+	return ""
+}
+
 type Hardware struct {
 	JSON                 string   `protobuf:"bytes,1,opt,name=JSON" json:"JSON,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -140,7 +148,7 @@ func (m *Hardware) Reset()         { *m = Hardware{} }
 func (m *Hardware) String() string { return proto.CompactTextString(m) }
 func (*Hardware) ProtoMessage()    {}
 func (*Hardware) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_c925df15ed844542, []int{3}
+	return fileDescriptor_cacher_8100dabbaf760b4d, []int{3}
 }
 func (m *Hardware) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Hardware.Unmarshal(m, b)
@@ -187,6 +195,8 @@ const _ = grpc.SupportPackageIsVersion4
 type CacherClient interface {
 	Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*Empty, error)
 	ByMAC(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*Hardware, error)
+	ByIP(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*Hardware, error)
+	All(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Cacher_AllClient, error)
 }
 
 type cacherClient struct {
@@ -215,11 +225,54 @@ func (c *cacherClient) ByMAC(ctx context.Context, in *GetRequest, opts ...grpc.C
 	return out, nil
 }
 
+func (c *cacherClient) ByIP(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*Hardware, error) {
+	out := new(Hardware)
+	err := grpc.Invoke(ctx, "/cacher.Cacher/ByIP", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cacherClient) All(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Cacher_AllClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Cacher_serviceDesc.Streams[0], c.cc, "/cacher.Cacher/All", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &cacherAllClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Cacher_AllClient interface {
+	Recv() (*Hardware, error)
+	grpc.ClientStream
+}
+
+type cacherAllClient struct {
+	grpc.ClientStream
+}
+
+func (x *cacherAllClient) Recv() (*Hardware, error) {
+	m := new(Hardware)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Server API for Cacher service
 
 type CacherServer interface {
 	Push(context.Context, *PushRequest) (*Empty, error)
 	ByMAC(context.Context, *GetRequest) (*Hardware, error)
+	ByIP(context.Context, *GetRequest) (*Hardware, error)
+	All(*Empty, Cacher_AllServer) error
 }
 
 func RegisterCacherServer(s *grpc.Server, srv CacherServer) {
@@ -262,6 +315,45 @@ func _Cacher_ByMAC_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Cacher_ByIP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CacherServer).ByIP(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cacher.Cacher/ByIP",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CacherServer).ByIP(ctx, req.(*GetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cacher_All_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CacherServer).All(m, &cacherAllServer{stream})
+}
+
+type Cacher_AllServer interface {
+	Send(*Hardware) error
+	grpc.ServerStream
+}
+
+type cacherAllServer struct {
+	grpc.ServerStream
+}
+
+func (x *cacherAllServer) Send(m *Hardware) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 var _Cacher_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "cacher.Cacher",
 	HandlerType: (*CacherServer)(nil),
@@ -274,25 +366,37 @@ var _Cacher_serviceDesc = grpc.ServiceDesc{
 			MethodName: "ByMAC",
 			Handler:    _Cacher_ByMAC_Handler,
 		},
+		{
+			MethodName: "ByIP",
+			Handler:    _Cacher_ByIP_Handler,
+		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "All",
+			Handler:       _Cacher_All_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "cacher.proto",
 }
 
-func init() { proto.RegisterFile("cacher.proto", fileDescriptor_cacher_c925df15ed844542) }
+func init() { proto.RegisterFile("cacher.proto", fileDescriptor_cacher_8100dabbaf760b4d) }
 
-var fileDescriptor_cacher_c925df15ed844542 = []byte{
-	// 177 bytes of a gzipped FileDescriptorProto
+var fileDescriptor_cacher_8100dabbaf760b4d = []byte{
+	// 212 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x4e, 0x4c, 0xce,
 	0x48, 0x2d, 0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0xf0, 0x94, 0x14, 0xb9, 0xb8,
 	0x03, 0x4a, 0x8b, 0x33, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x84, 0x84, 0xb8, 0x58, 0x52,
 	0x12, 0x4b, 0x12, 0x25, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0xc0, 0x6c, 0x25, 0x76, 0x2e, 0x56,
-	0xd7, 0xdc, 0x82, 0x92, 0x4a, 0x25, 0x39, 0x2e, 0x2e, 0xf7, 0xd4, 0x12, 0x98, 0x52, 0x01, 0x2e,
-	0x66, 0x5f, 0x47, 0x67, 0xa8, 0x4a, 0x10, 0x53, 0x49, 0x8e, 0x8b, 0xc3, 0x23, 0xb1, 0x28, 0xa5,
-	0x3c, 0xb1, 0x28, 0x15, 0x64, 0x90, 0x57, 0xb0, 0xbf, 0x1f, 0xcc, 0x20, 0x10, 0xdb, 0x28, 0x99,
-	0x8b, 0xcd, 0x19, 0x6c, 0xab, 0x90, 0x16, 0x17, 0x0b, 0xc8, 0x56, 0x21, 0x61, 0x3d, 0xa8, 0xa3,
-	0x90, 0xdc, 0x20, 0xc5, 0x0b, 0x13, 0x04, 0xdb, 0x2a, 0xa4, 0xcb, 0xc5, 0xea, 0x54, 0xe9, 0xeb,
-	0xe8, 0x2c, 0x24, 0x04, 0x13, 0x47, 0x38, 0x42, 0x4a, 0x00, 0x26, 0x06, 0xb3, 0x38, 0x89, 0x0d,
-	0xec, 0x3f, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0x8d, 0x2f, 0x05, 0x04, 0xef, 0x00, 0x00,
-	0x00,
+	0xd7, 0xdc, 0x82, 0x92, 0x4a, 0x25, 0x3d, 0x2e, 0x2e, 0xf7, 0xd4, 0x12, 0x98, 0x52, 0x01, 0x2e,
+	0x66, 0x5f, 0x47, 0x67, 0xa8, 0x4a, 0x10, 0x53, 0x88, 0x8f, 0x8b, 0xc9, 0x33, 0x40, 0x82, 0x09,
+	0x2c, 0xc0, 0xe4, 0x19, 0xa0, 0x24, 0xc7, 0xc5, 0xe1, 0x91, 0x58, 0x94, 0x52, 0x9e, 0x58, 0x94,
+	0x0a, 0x32, 0xd8, 0x2b, 0xd8, 0xdf, 0x0f, 0x66, 0x30, 0x88, 0x6d, 0xb4, 0x9b, 0x91, 0x8b, 0xcd,
+	0x19, 0xec, 0x0c, 0x21, 0x2d, 0x2e, 0x16, 0x90, 0x33, 0x84, 0x84, 0xf5, 0xa0, 0xae, 0x44, 0x72,
+	0x94, 0x14, 0x2f, 0x4c, 0x10, 0xec, 0x0c, 0x21, 0x5d, 0x2e, 0x56, 0xa7, 0x4a, 0x90, 0x7d, 0x42,
+	0x30, 0x71, 0x84, 0xab, 0xa4, 0x04, 0x60, 0x62, 0x70, 0x9b, 0x75, 0xb8, 0x58, 0x9c, 0x2a, 0x3d,
+	0x03, 0x88, 0x54, 0xad, 0xc1, 0xc5, 0xec, 0x98, 0x93, 0x23, 0x84, 0x6a, 0x25, 0xa6, 0x3a, 0x03,
+	0xc6, 0x24, 0x36, 0x70, 0x40, 0x1a, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0xdc, 0x73, 0xfd, 0x0e,
+	0x58, 0x01, 0x00, 0x00,
 }
