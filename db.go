@@ -85,3 +85,28 @@ func copyin(db *sql.DB, data []map[string]interface{}) error {
 
 	return nil
 }
+
+func deleteFromDB(ctx context.Context, db *sql.DB, id string) error {
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return errors.Wrap(err, "BEGIN transaction")
+	}
+
+	_, err = tx.Exec(`
+	UPDATE hardware
+	SET
+		deleted_at = NOW()
+	WHERE
+		id = $1;
+	`, id)
+
+	if err != nil {
+		return errors.Wrap(err, "DELETE")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return errors.Wrap(err, "COMMIT")
+	}
+	return nil
+}
