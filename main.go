@@ -57,7 +57,9 @@ func main() {
 	if err != nil {
 		sugar.Fatal(err)
 	}
-	fmt.Println(db)
+	if err := truncate(db); err != nil {
+		panic(err)
+	}
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 
