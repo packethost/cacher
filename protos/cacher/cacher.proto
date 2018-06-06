@@ -4,6 +4,8 @@ package cacher;
 service Cacher {
 	rpc Push (PushRequest) returns (Empty);
 	rpc ByMAC(GetRequest) returns (Hardware);
+	rpc ByIP(GetRequest) returns (Hardware);
+	rpc All(Empty) returns (stream Hardware);
 }
 
 message PushRequest {
@@ -15,6 +17,7 @@ message Empty {
 
 message GetRequest {
 	string MAC = 1;
+	string IP = 2;
 }
 
 message Hardware {
