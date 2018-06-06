@@ -13,6 +13,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -38,23 +39,33 @@ func getMaxErrs() int {
 }
 
 func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
+	label := prometheus.Labels{}
 	var errCount int
 	for errCount = 0; errCount < getMaxErrs(); errCount++ {
 		sugar.Infow("starting fetch")
+		label["op"] = "fetch"
+		ingestCount.With(label).Inc()
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		data, err := fetchFacility(client, api, facility)
-		sugar.Info("done fetching")
 		if err != nil {
+			ingestErrors.With(label).Inc()
 			sugar.Info(err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
+		timer.ObserveDuration()
+		sugar.Info("done fetching")
 
 		sugar.Info("copying")
+		label["op"] = "copy"
+		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		if err = copyin(db, data); err != nil {
+			ingestErrors.With(label).Inc()
 			sugar.Info(err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
+		timer.ObserveDuration()
 		sugar.Info("done copying")
 		break
 	}
@@ -123,6 +134,7 @@ func main() {
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 	db := connectDB()
 	facility := os.Getenv("FACILITY")
+	setupMetrics(facility)
 	s := setupGRPC(client, db, facility)
 	setupPromHTTP()
 
