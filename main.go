@@ -2,12 +2,10 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
-	_ "github.com/lib/pq"
 	"github.com/packethost/packngo"
 	"go.uber.org/zap"
 )
@@ -70,6 +68,11 @@ func main() {
 		sugar.Info(err)
 	}
 
-	fmt.Println(data)
+	sugar.Info("copying")
+	if err = copyin(db, data); err != nil {
+		sugar.Info(err)
+	}
+	sugar.Info("done copying")
+
 	select {}
 }
