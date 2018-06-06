@@ -1,11 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
+	_ "github.com/lib/pq"
 	"github.com/packethost/packngo"
 	"go.uber.org/zap"
 )
@@ -43,6 +45,19 @@ func main() {
 			api += "/"
 		}
 	}
+
+	connStr := strings.Join([]string{
+		"dbname=" + os.Getenv("POSTGRES_DB"),
+		"host=" + os.Getenv("POSTGRES_HOST"),
+		"password=" + os.Getenv("POSTGRES_PASSWORD"),
+		"sslmode=disable",
+		"user=" + os.Getenv("POSTGRES_USER"),
+	}, " ")
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		sugar.Fatal(err)
+	}
+	fmt.Println(db)
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 

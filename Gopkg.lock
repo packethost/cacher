@@ -3,6 +3,15 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid"
+  ]
+  revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+
+[[projects]]
+  branch = "master"
   name = "github.com/packethost/packngo"
   packages = ["."]
   revision = "dff6ec250ba6085b63b56b5f1e2e69c6dad7569f"
@@ -41,6 +50,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "59da77dd65bd0c089cfd5ee54c113f23401ad3fbe0cde25158842d651e55f3a8"
+  inputs-digest = "5772335540e90de0a8063452ebe3c1ca4a327518c3d438db988d06efabbc3479"
   solver-name = "gps-cdcl"
   solver-version = 1

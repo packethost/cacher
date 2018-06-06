@@ -25,6 +25,10 @@
   go-tests = true
 
 [[constraint]]
+  name = "github.com/lib/pq"
+  branch = "master"
+
+[[constraint]]
   name = "github.com/packethost/packngo"
   branch = "master"
 
