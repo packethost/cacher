@@ -26,6 +26,11 @@ var (
 	sugar *zap.SugaredLogger
 )
 
+const (
+	grpcListenAddr = ":42111"
+	httpListenAddr = ":42112"
+)
+
 func getMaxErrs() int {
 	sMaxErrs := os.Getenv("CACHER_MAX_ERRS")
 	if sMaxErrs == "" {
@@ -113,7 +118,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 
 	go func() {
 		sugar.Info("serving grpc")
-		lis, err := net.Listen("tcp", clientPort)
+		lis, err := net.Listen("tcp", grpcListenAddr)
 		if err != nil {
 			sugar.Fatalf("failed to listen: %v", err)
 		}
@@ -130,7 +135,9 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 
 func setupPromHTTP(ctx context.Context, errCh chan<- error) *http.Server {
 	http.Handle("/metrics", promhttp.Handler())
-	srv := &http.Server{}
+	srv := &http.Server{
+		Addr: httpListenAddr,
+	}
 	go func() {
 		sugar.Info("serving http")
 		err := srv.ListenAndServe()

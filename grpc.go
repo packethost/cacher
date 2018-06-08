@@ -12,10 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	clientPort = ":42111"
-)
-
 type server struct {
 	packet *packngo.Client
 	db     *sql.DB
