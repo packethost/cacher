@@ -116,13 +116,17 @@ func setupPromHTTP() {
 	http.Handle("/metrics", promhttp.Handler())
 }
 
-func main() {
+func setupLogging() *zap.SugaredLogger {
 	log, err := zap.NewProduction()
 	if err != nil {
 		panic(err)
 	}
 	sugar = log.Sugar()
-	defer log.Sync()
+	return sugar
+}
+
+func main() {
+	defer setupLogging().Sync()
 
 	if url := os.Getenv("PACKET_API_URL"); url != "" && url != api {
 		api = url
