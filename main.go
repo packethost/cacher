@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"net"
 	"net/http"
@@ -92,7 +93,7 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func setupGRPC(client *packngo.Client, db *sql.DB, facility string) *grpc.Server {
+func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) {
 	tc, err := credentials.NewServerTLSFromFile("/certs/"+facility+"/server.pem", "/certs/"+facility+"/server-key.pem")
 	if err != nil {
 		sugar.Fatalf("failed to read TLS files: %v", err)
@@ -109,7 +110,22 @@ func setupGRPC(client *packngo.Client, db *sql.DB, facility string) *grpc.Server
 		},
 	})
 	grpc_prometheus.Register(s)
-	return s
+
+	go func() {
+		sugar.Info("serving grpc")
+		lis, err := net.Listen("tcp", clientPort)
+		if err != nil {
+			sugar.Fatalf("failed to listen: %v", err)
+		}
+
+		errCh <- s.Serve(lis)
+	}()
+
+	go func() {
+		<-ctx.Done()
+		s.GracefulStop()
+	}()
+
 }
 
 func setupPromHTTP() {
@@ -139,24 +155,26 @@ func main() {
 	db := connectDB()
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
-	s := setupGRPC(client, db, facility)
+
+	ctx, closer := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	setupGRPC(ctx, client, db, facility, errCh)
 	setupPromHTTP()
 
-	lis, err := net.Listen("tcp", clientPort)
-	if err != nil {
-		sugar.Fatalf("failed to listen: %v", err)
-	}
-
+	var err error
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs)
-	go func() {
-		sig := <-sigs
-		sugar.Infow("signal received, stopping server", "signal", sig.String())
-		s.GracefulStop()
-	}()
+	select {
+	case err = <-errCh:
+		sugar.Fatal(err)
+	case sig := <-sigs:
+		sugar.Infow("signal received, stopping servers", "signal", sig.String())
+	}
+	closer()
 
-	sugar.Info("serving grpc")
-	if err := s.Serve(lis); err != nil {
-		sugar.Fatalf("failed to serve: %v", err)
+	// wait for grpc to shutdown
+	err = <-errCh
+	if err != nil {
+		sugar.Fatal(err)
 	}
 }
