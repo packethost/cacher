@@ -128,8 +128,22 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 
 }
 
-func setupPromHTTP() {
+func setupPromHTTP(ctx context.Context, errCh chan<- error) *http.Server {
 	http.Handle("/metrics", promhttp.Handler())
+	srv := &http.Server{}
+	go func() {
+		sugar.Info("serving http")
+		err := srv.ListenAndServe()
+		if err == http.ErrServerClosed {
+			err = nil
+		}
+		errCh <- err
+	}()
+	go func() {
+		<-ctx.Done()
+		srv.Shutdown(context.Background())
+	}()
+	return srv
 }
 
 func setupLogging() *zap.SugaredLogger {
@@ -157,9 +171,9 @@ func main() {
 	setupMetrics(facility)
 
 	ctx, closer := context.WithCancel(context.Background())
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2)
 	setupGRPC(ctx, client, db, facility, errCh)
-	setupPromHTTP()
+	setupPromHTTP(ctx, errCh)
 
 	var err error
 	sigs := make(chan os.Signal, 1)
@@ -172,7 +186,11 @@ func main() {
 	}
 	closer()
 
-	// wait for grpc to shutdown
+	// wait for both grpc and http servers to shutdown
+	err = <-errCh
+	if err != nil {
+		sugar.Fatal(err)
+	}
 	err = <-errCh
 	if err != nil {
 		sugar.Fatal(err)
