@@ -1,164 +1,35 @@
 package main
 
 import (
+	"context"
+	"database/sql"
+	"net"
+	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/adelowo/onecache"
-	"github.com/adelowo/onecache/memory"
-	"github.com/pkg/errors"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/packethost/cacher/protos/cacher"
+	"github.com/packethost/packngo"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
 	api   = "https://api.packet.net/"
-	cache onecache.Store
 	sugar *zap.SugaredLogger
 )
 
-func newFacility(code string) (*facility, error) {
-	v := map[string][]struct {
-		Code string
-		HRef string
-		ID   string
-		Name string
-	}{}
-	err := get(&v, "facilities")
-	if err != nil {
-		return nil, err
-	}
-
-	facs, ok := v["facilities"]
-	if !ok {
-		return nil, errors.New("error fetching facilities")
-	}
-
-	i := 0
-	found := false
-	for i = range facs {
-		f := facs[i]
-		if f.Code == code {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, errors.New("facility is not available")
-	}
-
-	f := facs[i]
-	return &facility{
-		hrefID: hrefID{HRef: f.HRef, ID: f.ID},
-		Code:   f.Code,
-	}, nil
-}
-
-func (f *facility) getRacks() error {
-	v := struct {
-		ID            string
-		Code          string
-		FacilityRooms []struct {
-			Cages []struct {
-				Rows []struct {
-					Racks []rack `json:"server_racks"`
-				} `json:"rows"`
-			} `json:"cages"`
-		} `json:"facility_rooms"`
-	}{}
-
-	err := get(&v, "facilities/"+f.ID, query("include=facility_rooms.cages.rows.server_racks"))
-	if err != nil {
-		return err
-	}
-
-	f.Racks = map[string]rack{}
-	for _, room := range v.FacilityRooms {
-		for _, cage := range room.Cages {
-			for _, row := range cage.Rows {
-				for _, rack := range row.Racks {
-					f.Racks[rack.ID] = rack
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (f *facility) isCore() bool {
-	var core bool
-	switch f.Code {
-	case "ams1", "ewr1", "nrt1", "sjc1", "lab1":
-		core = true
-	}
-	return core
-}
-
-func (f *facility) getRackSwitches() error {
-	for _, rack := range f.Racks {
-		switches, err := getSwitchesInRack(f.isCore(), rack.ID)
-		if err != nil {
-			return errors.Wrapf(err, `msg="failed to get rack switches" rack.id="%s" rack.name="%s"`, rack.ID, rack.Name)
-		}
-		rack.Switches = switches
-		f.Racks[rack.ID] = rack
-	}
-	return nil
-}
-
-func (f *facility) getIrbs() error {
-	type result struct {
-		hostname string
-		ports    []port
-		err      error
-	}
-
-	switchPorts := make(map[string][]port)
-	results := make(chan result, len(f.Racks))
-	wg := sync.WaitGroup{}
-	for _, rack := range f.Racks {
-		for _, swtch := range rack.Switches {
-			if _, ok := switchPorts[swtch.Hostname]; ok {
-				continue
-			}
-			switchPorts[swtch.Hostname] = nil
-
-			wg.Add(1)
-			go func(hostname string) {
-				ports, err := getSwitchIrbs(hostname)
-				results <- result{
-					hostname: hostname,
-					ports:    ports,
-					err:      err,
-				}
-				wg.Done()
-			}(swtch.Hostname)
-		}
-	}
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for r := range results {
-		if r.err != nil {
-			return errors.Wrap(r.err, r.hostname)
-		}
-		switchPorts[r.hostname] = r.ports
-	}
-
-	for _, rack := range f.Racks {
-		for _, swtch := range rack.Switches {
-			for _, port := range switchPorts[swtch.Hostname] {
-				swtch.Ports[port.Name] = port
-			}
-			rack.Switches[swtch.ID] = swtch
-		}
-	}
-	return nil
-}
+const (
+	grpcListenAddr = ":42111"
+	httpListenAddr = ":42112"
+)
 
 func getMaxErrs() int {
 	sMaxErrs := os.Getenv("CACHER_MAX_ERRS")
@@ -173,26 +44,130 @@ func getMaxErrs() int {
 	return max
 }
 
-func resolveVLANHelpers(core bool) {
-	if core {
-		getMB = getMBT0
-		getMBC = getMBCT0
-		getNode = getNodeT0
-		irbRegex = irbRegexT0
-	} else {
-		irbRegex = irbRegexT1E
-		getMB = getMBT1E
-		getMBC = getMBCT1E
-		getNode = getNodeT1E
+func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
+	label := prometheus.Labels{}
+	var errCount int
+	for errCount = 0; errCount < getMaxErrs(); errCount++ {
+		sugar.Infow("starting fetch")
+		label["op"] = "fetch"
+		ingestCount.With(label).Inc()
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
+		data, err := fetchFacility(client, api, facility)
+		if err != nil {
+			ingestErrors.With(label).Inc()
+			sugar.Info(err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		timer.ObserveDuration()
+		sugar.Info("done fetching")
+
+		sugar.Info("copying")
+		label["op"] = "copy"
+		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
+		if err = copyin(db, data); err != nil {
+			ingestErrors.With(label).Inc()
+			sugar.Info(err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		timer.ObserveDuration()
+		sugar.Info("done copying")
+		break
+	}
+	if errCount >= getMaxErrs() {
+		sugar.Fatal("maximum fetch/copy errors reached")
 	}
 }
 
-func main() {
-	log, _ := zap.NewProduction()
-	sugar = log.Sugar()
-	defer log.Sync()
+func connectDB() *sql.DB {
+	args := []string{
+		"dbname=" + os.Getenv("POSTGRES_DB"),
+		"host=" + os.Getenv("POSTGRES_HOST"),
+		"password=" + os.Getenv("POSTGRES_PASSWORD"),
+		"sslmode=disable",
+		"user=" + os.Getenv("POSTGRES_USER"),
+	}
+	if port := os.Getenv("POSTGRES_PORT"); port != "" {
+		args = append(args, "port="+port)
+	}
 
-	cache = memory.NewInMemoryStore(5 * time.Minute)
+	db, err := sql.Open("postgres", strings.Join(args, " "))
+	if err != nil {
+		sugar.Fatal(err)
+	}
+	if err := truncate(db); err != nil {
+		panic(err)
+	}
+	return db
+}
+
+func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) {
+	tc, err := credentials.NewServerTLSFromFile("/certs/"+facility+"/server.pem", "/certs/"+facility+"/server-key.pem")
+	if err != nil {
+		sugar.Fatalf("failed to read TLS files: %v", err)
+	}
+	s := grpc.NewServer(grpc.Creds(tc),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+	)
+	cacher.RegisterCacherServer(s, &server{
+		packet: client,
+		db:     db,
+		ingest: func() {
+			ingestFacility(client, db, api, facility)
+		},
+	})
+	grpc_prometheus.Register(s)
+
+	go func() {
+		sugar.Info("serving grpc")
+		lis, err := net.Listen("tcp", grpcListenAddr)
+		if err != nil {
+			sugar.Fatalf("failed to listen: %v", err)
+		}
+
+		errCh <- s.Serve(lis)
+	}()
+
+	go func() {
+		<-ctx.Done()
+		s.GracefulStop()
+	}()
+
+}
+
+func setupPromHTTP(ctx context.Context, errCh chan<- error) *http.Server {
+	http.Handle("/metrics", promhttp.Handler())
+	srv := &http.Server{
+		Addr: httpListenAddr,
+	}
+	go func() {
+		sugar.Info("serving http")
+		err := srv.ListenAndServe()
+		if err == http.ErrServerClosed {
+			err = nil
+		}
+		errCh <- err
+	}()
+	go func() {
+		<-ctx.Done()
+		srv.Shutdown(context.Background())
+	}()
+	return srv
+}
+
+func setupLogging() *zap.SugaredLogger {
+	log, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+	sugar = log.Sugar()
+	return sugar
+}
+
+func main() {
+	defer setupLogging().Sync()
 
 	if url := os.Getenv("PACKET_API_URL"); url != "" && url != api {
 		api = url
@@ -201,62 +176,34 @@ func main() {
 		}
 	}
 
-	facility, err := newFacility(os.Getenv("PACKET_ENV"))
+	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
+	db := connectDB()
+	facility := os.Getenv("FACILITY")
+	setupMetrics(facility)
+
+	ctx, closer := context.WithCancel(context.Background())
+	errCh := make(chan error, 2)
+	setupGRPC(ctx, client, db, facility, errCh)
+	setupPromHTTP(ctx, errCh)
+
+	var err error
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs)
+	select {
+	case err = <-errCh:
+		sugar.Fatal(err)
+	case sig := <-sigs:
+		sugar.Infow("signal received, stopping servers", "signal", sig.String())
+	}
+	closer()
+
+	// wait for both grpc and http servers to shutdown
+	err = <-errCh
 	if err != nil {
-		panic(err)
+		sugar.Fatal(err)
 	}
-	resolveVLANHelpers(facility.isCore())
-
-	sugar.Infow("connectCache")
-	if err = connectCache(); err != nil {
-		panic(err)
-	}
-
-	errs := 0
-	maxErrs := getMaxErrs()
-	for {
-		if errs != 0 {
-			sugar.Infow("checking error count", "errs", errs)
-			if errs > maxErrs {
-				sugar.Errorw("maximum consecutive error limit reached", "errs", errs)
-				os.Exit(1)
-			}
-		}
-
-		sugar.Infow("starting fetch")
-		start := time.Now()
-		errored := false
-		for _, task := range []struct {
-			name string
-			fn   func() error
-		}{
-			{"getRacks", facility.getRacks},
-			{"getRackSwitches", facility.getRackSwitches},
-			{"getIrbs", facility.getIrbs},
-			{"setCache", func() error { return setCache(facility) }},
-		} {
-			sugar.Infow(task.name)
-			taskStart := time.Now()
-			if err = task.fn(); err != nil {
-				type stackTracer interface {
-					StackTrace() errors.StackTrace
-				}
-				if stacker, ok := err.(stackTracer); ok {
-					sugar.Errorw("failed", "error", err, "stack", stacker.StackTrace())
-				} else {
-					sugar.Errorw("failed", "error", err)
-				}
-				errored = true
-				break
-			}
-			sugar.Infow("done", "duration", time.Since(taskStart))
-		}
-		if !errored {
-			sugar.Infow("done fetching", "duration", time.Since(start))
-			errs = 0
-		} else {
-			errs++
-		}
-		time.Sleep(60 * time.Second)
+	err = <-errCh
+	if err != nil {
+		sugar.Fatal(err)
 	}
 }
