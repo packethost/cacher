@@ -103,6 +103,33 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
+func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware, error) {
+	labels := prometheus.Labels{"op": "get", "method": "By" + method}
+
+	cacheTotals.With(labels).Inc()
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
+
+	s.mu.RLock()
+	ready := s.dbReady
+	s.mu.RUnlock()
+	if !ready {
+		cacheStalls.With(labels).Inc()
+		return &cacher.Hardware{}, errors.New("DB is not ready")
+	}
+
+	timer := prometheus.NewTimer(cacheDuration.With(labels))
+	defer timer.ObserveDuration()
+	j, err := fn()
+	if err != nil {
+		cacheErrors.With(labels).Inc()
+		return &cacher.Hardware{}, err
+	}
+
+	cacheHits.With(labels).Inc()
+	return &cacher.Hardware{JSON: j}, nil
+}
+
 // ByMAC implements cacher.CacherServer
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
 	labels := prometheus.Labels{"op": "get", "method": "ByMAC"}
