@@ -10,6 +10,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+func pqError(err error) *pq.Error {
+	if pqErr, ok := errors.Cause(err).(*pq.Error); ok {
+		return pqErr
+	}
+	return nil
+}
+
 func truncate(db *sql.DB) error {
 	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {

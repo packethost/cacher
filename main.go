@@ -67,7 +67,13 @@ func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
 		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		if err = copyin(db, data); err != nil {
 			ingestErrors.With(label).Inc()
+
 			sugar.Info(err)
+			if pqErr := pqError(err); pqErr != nil {
+				sugar.Info(pqErr.Detail)
+				sugar.Info(pqErr.Where)
+			}
+
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -97,6 +103,10 @@ func connectDB() *sql.DB {
 		sugar.Fatal(err)
 	}
 	if err := truncate(db); err != nil {
+		if pqErr := pqError(err); pqErr != nil {
+			sugar.Info(pqErr.Detail)
+			sugar.Info(pqErr.Where)
+		}
 		panic(err)
 	}
 	return db

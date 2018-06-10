@@ -94,6 +94,10 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	if err != nil {
 		cacheErrors.With(labels).Inc()
 		sugar.Error(err)
+		if pqErr := pqError(err); pqErr != nil {
+			sugar.Error(pqErr.Detail)
+			sugar.Error(pqErr.Where)
+		}
 	}
 
 	return &cacher.Empty{}, err
