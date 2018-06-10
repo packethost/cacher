@@ -176,7 +176,7 @@ func get(ctx context.Context, db *sql.DB, query, arg string) (string, error) {
 }
 
 func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
-	p := `
+	arg := `
 	{
 	  "network_ports": [
 	    {
@@ -187,33 +187,20 @@ func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
 	  ]
 	}
 	`
-	row := db.QueryRowContext(ctx, `
+	query := `
 	SELECT data
 	FROM hardware
 	WHERE
 		deleted_at IS NULL
 	AND
-		data @> $1`, p)
+		data @> $1
+	`
 
-	buf := []byte{}
-	err := row.Scan(&buf)
-	if err == nil {
-		sugar.Info("got data:", string(buf))
-		return string(buf), nil
-	}
-
-	if err != sql.ErrNoRows {
-		err = errors.Wrap(err, "SELECT")
-		sugar.Error(err)
-	} else {
-		err = nil
-	}
-
-	return "", err
+	return get(ctx, db, query, arg)
 }
 
 func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
-	p := `
+	arg := `
 	{
 	  "instance": {
 	    "ip_addresses": [
@@ -224,29 +211,17 @@ func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
 	  }
 	}
 	`
-	row := db.QueryRowContext(ctx, `
+
+	query := `
 	SELECT data
 	FROM hardware
 	WHERE
 		deleted_at IS NULL
 	AND
-		data @> $1`, p)
+		data @> $1
+	`
 
-	buf := []byte{}
-	err := row.Scan(&buf)
-	if err == nil {
-		sugar.Info("got data:", string(buf))
-		return string(buf), nil
-	}
-
-	if err != sql.ErrNoRows {
-		err = errors.Wrap(err, "SELECT")
-		sugar.Error(err)
-	} else {
-		err = nil
-	}
-
-	return "", err
+	return get(ctx, db, query, arg)
 }
 
 func getAll(db *sql.DB, fn func(string) error) error {
