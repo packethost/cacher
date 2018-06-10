@@ -159,6 +159,11 @@ func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardw
 	return &cacher.Hardware{JSON: j}, nil
 }
 
+// ByID implements cacher.CacherServer
+func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	return &cacher.Hardware{}, nil
+}
+
 // ALL implements cacher.CacherServer
 func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 	labels := prometheus.Labels{"op": "get", "method": "All"}
