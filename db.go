@@ -42,11 +42,15 @@ func copyin(db *sql.DB, data []map[string]interface{}) error {
 		return errors.Wrap(err, "BEGIN transaction")
 	}
 
-	q := pq.CopyIn("hardware", "data")
-	q += " CSV QUOTE e'\\x01' DELIMITER e'\\x02';"
-	stmt, err := tx.Prepare(q)
+	stmt, err := tx.Prepare(`
+	INSERT INTO
+		hardware (data)
+	VALUES
+		($1)
+	`)
+
 	if err != nil {
-		return errors.Wrap(err, "PREPARE COPY IN")
+		return errors.Wrap(err, "PREPARE INSERT")
 	}
 
 	for _, j := range data {
@@ -55,20 +59,15 @@ func copyin(db *sql.DB, data []map[string]interface{}) error {
 		if err != nil {
 			return errors.Wrap(err, "marshal json")
 		}
-		_, err = stmt.Exec(string(q))
+		_, err = stmt.Exec(q)
 		if err != nil {
-			return errors.Wrap(err, "COPYing 1 object")
+			return errors.Wrap(err, "INSERT")
 		}
-	}
-
-	_, err = stmt.Exec()
-	if err != nil {
-		return errors.Wrap(err, "empty EXEC to notify lib/pq")
 	}
 
 	err = stmt.Close()
 	if err != nil {
-		return errors.Wrap(err, "performing COPY")
+		return errors.Wrap(err, "Close")
 	}
 
 	// Remove duplicates, keeping what has already been inserted via insertIntoDB since startup
@@ -136,7 +135,8 @@ func insertIntoDB(ctx context.Context, db *sql.DB, data string) error {
 	}
 
 	_, err = tx.Exec(`
-	INSERT INTO hardware (inserted_at, id, data)
+	INSERT INTO
+		hardware (inserted_at, id, data)
 	VALUES
 		($1, ($2::jsonb ->> 'id')::uuid, $2)
 	ON CONFLICT (id)
