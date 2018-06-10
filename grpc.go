@@ -146,7 +146,9 @@ func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardw
 
 // ByID implements cacher.CacherServer
 func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return &cacher.Hardware{}, nil
+	return s.by("ID", func() (string, error) {
+		return getByID(ctx, s.db, in.ID)
+	})
 }
 
 // ALL implements cacher.CacherServer
