@@ -132,58 +132,16 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 
 // ByMAC implements cacher.CacherServer
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	labels := prometheus.Labels{"op": "get", "method": "ByMAC"}
-
-	cacheTotals.With(labels).Inc()
-	cacheInFlight.With(labels).Inc()
-	defer cacheInFlight.With(labels).Dec()
-
-	s.mu.RLock()
-	ready := s.dbReady
-	s.mu.RUnlock()
-	if !ready {
-		cacheStalls.With(labels).Inc()
-		return &cacher.Hardware{}, errors.New("DB is not ready")
-	}
-
-	timer := prometheus.NewTimer(cacheDuration.With(labels))
-	defer timer.ObserveDuration()
-	j, err := getByMAC(ctx, s.db, in.MAC)
-	if err != nil {
-		cacheErrors.With(labels).Inc()
-		return &cacher.Hardware{}, err
-	}
-
-	cacheHits.With(labels).Inc()
-	return &cacher.Hardware{JSON: j}, nil
+	return s.by("MAC", func() (string, error) {
+		return getByMAC(ctx, s.db, in.MAC)
+	})
 }
 
 // ByIP implements cacher.CacherServer
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	labels := prometheus.Labels{"op": "get", "method": "ByIP"}
-
-	cacheTotals.With(labels).Inc()
-	cacheInFlight.With(labels).Inc()
-	defer cacheInFlight.With(labels).Dec()
-
-	s.mu.RLock()
-	ready := s.dbReady
-	s.mu.RUnlock()
-	if !ready {
-		cacheStalls.With(labels).Inc()
-		return &cacher.Hardware{}, errors.New("DB is not ready")
-	}
-
-	timer := prometheus.NewTimer(cacheDuration.With(labels))
-	defer timer.ObserveDuration()
-	j, err := getByIP(ctx, s.db, in.IP)
-	if err != nil {
-		cacheErrors.With(labels).Inc()
-		return &cacher.Hardware{}, err
-	}
-
-	cacheHits.With(labels).Inc()
-	return &cacher.Hardware{JSON: j}, nil
+	return s.by("IP", func() (string, error) {
+		return getByIP(ctx, s.db, in.IP)
+	})
 }
 
 // ByID implements cacher.CacherServer
