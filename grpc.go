@@ -149,7 +149,7 @@ func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardw
 
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
 	defer timer.ObserveDuration()
-	j, err := getByMAC(ctx, s.db, in.MAC)
+	j, err := getByIP(ctx, s.db, in.IP)
 	if err != nil {
 		cacheErrors.With(labels).Inc()
 		return &cacher.Hardware{}, err
