@@ -224,6 +224,20 @@ func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
 	return get(ctx, db, query, arg)
 }
 
+func getByID(ctx context.Context, db *sql.DB, id string) (string, error) {
+	arg := id
+
+	query := `
+	SELECT data
+	FROM hardware
+	WHERE
+		deleted_at IS NULL
+	AND
+		id = $1
+	`
+	return get(ctx, db, query, arg)
+}
+
 func getAll(db *sql.DB, fn func(string) error) error {
 	rows, err := db.Query(`
 	SELECT data
