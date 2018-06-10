@@ -155,6 +155,26 @@ func insertIntoDB(ctx context.Context, db *sql.DB, data string) error {
 	return nil
 }
 
+func get(ctx context.Context, db *sql.DB, query, arg string) (string, error) {
+	row := db.QueryRowContext(ctx, query, arg)
+
+	buf := []byte{}
+	err := row.Scan(&buf)
+	if err == nil {
+		sugar.Info("got data:", string(buf))
+		return string(buf), nil
+	}
+
+	if err != sql.ErrNoRows {
+		err = errors.Wrap(err, "SELECT")
+		sugar.Error(err)
+	} else {
+		err = nil
+	}
+
+	return "", err
+}
+
 func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
 	p := `
 	{
