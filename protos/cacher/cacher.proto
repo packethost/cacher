@@ -5,6 +5,7 @@ service Cacher {
 	rpc Push (PushRequest) returns (Empty);
 	rpc ByMAC(GetRequest) returns (Hardware);
 	rpc ByIP(GetRequest) returns (Hardware);
+	rpc ByID(GetRequest) returns (Hardware);
 	rpc All(Empty) returns (stream Hardware);
 }
 
@@ -18,6 +19,7 @@ message Empty {
 message GetRequest {
 	string MAC = 1;
 	string IP = 2;
+	string ID = 3;
 }
 
 message Hardware {

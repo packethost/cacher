@@ -94,14 +94,17 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	if err != nil {
 		cacheErrors.With(labels).Inc()
 		sugar.Error(err)
+		if pqErr := pqError(err); pqErr != nil {
+			sugar.Error(pqErr.Detail)
+			sugar.Error(pqErr.Where)
+		}
 	}
 
 	return &cacher.Empty{}, err
 }
 
-// ByMAC implements cacher.CacherServer
-func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	labels := prometheus.Labels{"op": "get", "method": "ByMAC"}
+func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware, error) {
+	labels := prometheus.Labels{"op": "get", "method": "By" + method}
 
 	cacheTotals.With(labels).Inc()
 	cacheInFlight.With(labels).Inc()
@@ -117,7 +120,7 @@ func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hard
 
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
 	defer timer.ObserveDuration()
-	j, err := getByMAC(ctx, s.db, in.MAC)
+	j, err := fn()
 	if err != nil {
 		cacheErrors.With(labels).Inc()
 		return &cacher.Hardware{}, err
@@ -127,32 +130,25 @@ func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hard
 	return &cacher.Hardware{JSON: j}, nil
 }
 
+// ByMAC implements cacher.CacherServer
+func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	return s.by("MAC", func() (string, error) {
+		return getByMAC(ctx, s.db, in.MAC)
+	})
+}
+
 // ByIP implements cacher.CacherServer
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	labels := prometheus.Labels{"op": "get", "method": "ByIP"}
+	return s.by("IP", func() (string, error) {
+		return getByIP(ctx, s.db, in.IP)
+	})
+}
 
-	cacheTotals.With(labels).Inc()
-	cacheInFlight.With(labels).Inc()
-	defer cacheInFlight.With(labels).Dec()
-
-	s.mu.RLock()
-	ready := s.dbReady
-	s.mu.RUnlock()
-	if !ready {
-		cacheStalls.With(labels).Inc()
-		return &cacher.Hardware{}, errors.New("DB is not ready")
-	}
-
-	timer := prometheus.NewTimer(cacheDuration.With(labels))
-	defer timer.ObserveDuration()
-	j, err := getByMAC(ctx, s.db, in.MAC)
-	if err != nil {
-		cacheErrors.With(labels).Inc()
-		return &cacher.Hardware{}, err
-	}
-
-	cacheHits.With(labels).Inc()
-	return &cacher.Hardware{JSON: j}, nil
+// ByID implements cacher.CacherServer
+func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	return s.by("ID", func() (string, error) {
+		return getByID(ctx, s.db, in.ID)
+	})
 }
 
 // ALL implements cacher.CacherServer

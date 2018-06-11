@@ -71,6 +71,7 @@ func setupMetrics(facility string) {
 	labels = []prometheus.Labels{
 		{"method": "ByMAC", "op": "get"},
 		{"method": "ByIP", "op": "get"},
+		{"method": "ByID", "op": "get"},
 		{"method": "All", "op": "get"},
 	}
 	initCounterLabels(cacheErrors, labels)
