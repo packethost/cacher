@@ -7,6 +7,7 @@ service Cacher {
 	rpc ByIP(GetRequest) returns (Hardware);
 	rpc ByID(GetRequest) returns (Hardware);
 	rpc All(Empty) returns (stream Hardware);
+	rpc Ingest(Empty) returns (Empty);
 }
 
 message PushRequest {

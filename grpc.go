@@ -103,6 +103,25 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
+// Ingest implements cacher.CacherServer
+func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
+	sugar.Info("ingest")
+	labels := prometheus.Labels{"method": "Ingest", "op": ""}
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
+
+	s.once.Do(func() {
+		sugar.Info("ingestion is starting")
+		s.ingest()
+		s.mu.Lock()
+		s.dbReady = true
+		s.mu.Unlock()
+		sugar.Info("ingestion is done")
+	})
+
+	return &cacher.Empty{}, nil
+}
+
 func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware, error) {
 	labels := prometheus.Labels{"op": "get", "method": "By" + method}
 

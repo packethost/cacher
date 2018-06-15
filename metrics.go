@@ -53,7 +53,6 @@ func setupMetrics(facility string) {
 	sugar.Info("initializing label values")
 	var labels []prometheus.Labels
 
-	// Method Push
 	labels = []prometheus.Labels{
 		{"method": "Push", "op": ""},
 	}
@@ -73,6 +72,7 @@ func setupMetrics(facility string) {
 		{"method": "ByIP", "op": "get"},
 		{"method": "ByID", "op": "get"},
 		{"method": "All", "op": "get"},
+		{"method": "Ingest", "op": ""},
 	}
 	initCounterLabels(cacheErrors, labels)
 	initGaugeLabels(cacheInFlight, labels)
