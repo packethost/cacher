@@ -110,20 +110,22 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	s.mu.RLock()
-	ready := s.dbReady
-	s.mu.RUnlock()
-	if !ready {
-		cacheStalls.With(labels).Inc()
-		return &cacher.Hardware{}, errors.New("DB is not ready")
-	}
-
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
 	defer timer.ObserveDuration()
 	j, err := fn()
 	if err != nil {
 		cacheErrors.With(labels).Inc()
 		return &cacher.Hardware{}, err
+	}
+
+	if j == "" {
+		s.mu.RLock()
+		ready := s.dbReady
+		s.mu.RUnlock()
+		if !ready {
+			cacheStalls.With(labels).Inc()
+			return &cacher.Hardware{}, errors.New("DB is not ready")
+		}
 	}
 
 	cacheHits.With(labels).Inc()
