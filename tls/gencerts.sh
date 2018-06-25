@@ -16,5 +16,14 @@ if ! { [[ -r server-csr.json ]] && [[ -r server.pem ]] && [[ -r server-key.pem ]
 		-config=/tls/ca-config.json \
 		-profile=server \
 		server-csr.json | cfssljson -bare server
-	cat ca.pem server.pem | tee bundle.pem
+	cat server.pem ca.pem | tee bundle.pem
+fi
+
+# only "modify" the file if truly necessary since cacher will serve it with
+# modtime info for client caching purposes
+cat server.pem ca.pem >bundle.pem.tmp
+if ! cmp -s bundle.pem.tmp bundle.pem; then
+	mv bundle.pem.tmp bundle.pem
+else
+	rm bundle.pem.tmp
 fi
