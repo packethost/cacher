@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -112,7 +114,7 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) {
+func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) ([]byte, time.Time) {
 	certsDir := os.Getenv("CACHER_CERTS_DIR")
 	if certsDir == "" {
 		certsDir = "/certs/" + facility
@@ -121,11 +123,34 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		certsDir += "/"
 	}
 
-	tc, err := credentials.NewServerTLSFromFile(certsDir+"/server.pem", certsDir+"/server-key.pem")
+	certFile, err := os.Open(certsDir + "bundle.pem")
+	if err != nil {
+		sugar.Fatalf("failed to open TLS cert: %v", err)
+	}
+
+	var modT time.Time
+	if stat, err := certFile.Stat(); err != nil {
+		sugar.Fatalf("failed to stat cert TLS cert: %v", err)
+	} else {
+		modT = stat.ModTime()
+	}
+
+	certPEM, err := ioutil.ReadAll(certFile)
+	if err != nil {
+		sugar.Fatalf("failed to read TLS cert: %v", err)
+	}
+	keyPEM, err := ioutil.ReadFile(certsDir + "server-key.pem")
+	if err != nil {
+		sugar.Fatalf("failed to read TLS keyt: %v", err)
+	}
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		sugar.Fatalf("failed to read TLS files: %v", err)
 	}
-	s := grpc.NewServer(grpc.Creds(tc),
+
+	s := grpc.NewServer(
+		grpc.Creds(credentials.NewServerTLSFromCert(&cert)),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 	)
@@ -152,6 +177,8 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		<-ctx.Done()
 		s.GracefulStop()
 	}()
+
+	return certPEM, modT
 }
 
 func setupPromHTTP(ctx context.Context, errCh chan<- error) *http.Server {
