@@ -113,7 +113,15 @@ func connectDB() *sql.DB {
 }
 
 func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) {
-	tc, err := credentials.NewServerTLSFromFile("/certs/"+facility+"/server.pem", "/certs/"+facility+"/server-key.pem")
+	certsDir := os.Getenv("CACHER_CERTS_DIR")
+	if certsDir == "" {
+		certsDir = "/certs/" + facility
+	}
+	if !strings.HasSuffix(certsDir, "/") {
+		certsDir += "/"
+	}
+
+	tc, err := credentials.NewServerTLSFromFile(certsDir+"/server.pem", certsDir+"/server-key.pem")
 	if err != nil {
 		sugar.Fatalf("failed to read TLS files: %v", err)
 	}
@@ -144,7 +152,6 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		<-ctx.Done()
 		s.GracefulStop()
 	}()
-
 }
 
 func setupPromHTTP(ctx context.Context, errCh chan<- error) *http.Server {
