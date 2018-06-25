@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"database/sql"
@@ -181,7 +182,10 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 	return certPEM, modT
 }
 
-func setupPromHTTP(ctx context.Context, errCh chan<- error) *http.Server {
+func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh chan<- error) *http.Server {
+	http.HandleFunc("/cert", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, "server.pem", modTime, bytes.NewReader(certPEM))
+	})
 	http.Handle("/metrics", promhttp.Handler())
 	srv := &http.Server{
 		Addr: httpListenAddr,
@@ -227,8 +231,8 @@ func main() {
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	setupGRPC(ctx, client, db, facility, errCh)
-	setupPromHTTP(ctx, errCh)
+	certPEM, modT := setupGRPC(ctx, client, db, facility, errCh)
+	setupHTTP(ctx, certPEM, modT, errCh)
 
 	var err error
 	sigs := make(chan os.Signal, 1)
