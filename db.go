@@ -200,7 +200,14 @@ func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
 }
 
 func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
-	arg := `
+	management := `
+	{
+	  "management": {
+	    "address": "` + ip + `"
+	  }
+	}
+	`
+	instance := `
 	{
 	  "instance": {
 	    "ip_addresses": [
@@ -217,11 +224,14 @@ func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
 	FROM hardware
 	WHERE
 		deleted_at IS NULL
-	AND
+	AND (
 		data @> $1
+		OR
+		data @> $2
+	)
 	`
 
-	return get(ctx, db, query, arg)
+	return get(ctx, db, query, management, instance)
 }
 
 func getByID(ctx context.Context, db *sql.DB, id string) (string, error) {
