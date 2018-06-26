@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -236,7 +237,7 @@ func main() {
 
 	var err error
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	select {
 	case err = <-errCh:
 		sugar.Fatal(err)
