@@ -155,8 +155,8 @@ func insertIntoDB(ctx context.Context, db *sql.DB, data string) error {
 	return nil
 }
 
-func get(ctx context.Context, db *sql.DB, query, arg string) (string, error) {
-	row := db.QueryRowContext(ctx, query, arg)
+func get(ctx context.Context, db *sql.DB, query string, args ...interface{}) (string, error) {
+	row := db.QueryRowContext(ctx, query, args...)
 
 	buf := []byte{}
 	err := row.Scan(&buf)
