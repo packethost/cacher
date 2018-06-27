@@ -123,7 +123,7 @@ func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, e
 }
 
 func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware, error) {
-	labels := prometheus.Labels{"op": "get", "method": "By" + method}
+	labels := prometheus.Labels{"method": method, "op": "get"}
 
 	cacheTotals.With(labels).Inc()
 	cacheInFlight.With(labels).Inc()
@@ -153,28 +153,28 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 
 // ByMAC implements cacher.CacherServer
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return s.by("MAC", func() (string, error) {
+	return s.by("ByMAC", func() (string, error) {
 		return getByMAC(ctx, s.db, in.MAC)
 	})
 }
 
 // ByIP implements cacher.CacherServer
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return s.by("IP", func() (string, error) {
+	return s.by("ByIP", func() (string, error) {
 		return getByIP(ctx, s.db, in.IP)
 	})
 }
 
 // ByID implements cacher.CacherServer
 func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return s.by("ID", func() (string, error) {
+	return s.by("ByID", func() (string, error) {
 		return getByID(ctx, s.db, in.ID)
 	})
 }
 
 // ALL implements cacher.CacherServer
 func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
-	labels := prometheus.Labels{"op": "get", "method": "All"}
+	labels := prometheus.Labels{"method": "All", "op": "get"}
 
 	cacheTotals.With(labels).Inc()
 	cacheInFlight.With(labels).Inc()
