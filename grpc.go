@@ -19,7 +19,7 @@ type server struct {
 	once   sync.Once
 	ingest func()
 
-	mu      sync.RWMutex
+	dbLock  sync.RWMutex
 	dbReady bool
 }
 
@@ -41,9 +41,9 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		go func() {
 			sugar.Info("ingestion is starting")
 			s.ingest()
-			s.mu.Lock()
+			s.dbLock.Lock()
 			s.dbReady = true
-			s.mu.Unlock()
+			s.dbLock.Unlock()
 			sugar.Info("ingestion is done")
 		}()
 		sugar.Info("ingestion goroutine is started")
@@ -113,9 +113,9 @@ func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, e
 	s.once.Do(func() {
 		sugar.Info("ingestion is starting")
 		s.ingest()
-		s.mu.Lock()
+		s.dbLock.Lock()
 		s.dbReady = true
-		s.mu.Unlock()
+		s.dbLock.Unlock()
 		sugar.Info("ingestion is done")
 	})
 
@@ -138,9 +138,9 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 	}
 
 	if j == "" {
-		s.mu.RLock()
+		s.dbLock.RLock()
 		ready := s.dbReady
-		s.mu.RUnlock()
+		s.dbLock.RUnlock()
 		if !ready {
 			cacheStalls.With(labels).Inc()
 			return &cacher.Hardware{}, errors.New("DB is not ready")
@@ -180,9 +180,9 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	s.mu.RLock()
+	s.dbLock.RLock()
 	ready := s.dbReady
-	s.mu.RUnlock()
+	s.dbLock.RUnlock()
 	if !ready {
 		cacheStalls.With(labels).Inc()
 		return errors.New("DB is not ready")
