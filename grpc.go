@@ -15,12 +15,16 @@ import (
 type server struct {
 	packet *packngo.Client
 	db     *sql.DB
+	quit   <-chan struct{}
 
 	once   sync.Once
 	ingest func()
 
 	dbLock  sync.RWMutex
 	dbReady bool
+
+	watchLock sync.RWMutex
+	watch     map[string]chan string
 }
 
 //go:generate protoc -I protos/cacher protos/cacher/cacher.proto --go_out=plugins=grpc:protos/cacher
@@ -76,10 +80,10 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	msg := ""
 	if h.State != "deleted" {
 		labels["op"] = "insert"
-		msg = ("inserting into DB")
+		msg = "inserting into DB"
 		fn = func() error { return insertIntoDB(ctx, s.db, in.Data) }
 	} else {
-		msg = ("deleting from DB")
+		msg = "deleting from DB"
 		labels["op"] = "delete"
 		fn = func() error { return deleteFromDB(ctx, s.db, h.ID) }
 	}
@@ -99,6 +103,17 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 			sugar.Error(pqErr.Where)
 		}
 	}
+
+	s.watchLock.RLock()
+	if ch := s.watch[h.ID]; ch != nil {
+		select {
+		case ch <- in.Data:
+		default:
+			watchMissTotal.Inc()
+			sugar.Errorw("skipping blocked watcher", "id", h.ID)
+		}
+	}
+	s.watchLock.RUnlock()
 
 	return &cacher.Empty{}, err
 }
@@ -204,5 +219,46 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 
 // Watch implements cacher.CacherServer
 func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
-	return nil
+
+	ch := make(chan string, 1)
+	s.watchLock.Lock()
+	_, ok := s.watch[in.ID]
+	if ok {
+		s.watchLock.Unlock()
+		return errors.New("only one watch per id is allowed")
+	}
+	s.watch[in.ID] = ch
+	s.watchLock.Unlock()
+
+	labels := prometheus.Labels{"method": "Watch", "op": "push"}
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
+	defer func() {
+		s.watchLock.Lock()
+		delete(s.watch, in.ID)
+		s.watchLock.Unlock()
+		close(ch)
+	}()
+
+	hw := &cacher.Hardware{}
+	for {
+		select {
+		case <-s.quit:
+			sugar.Info("server wants to shutdown", "id", in.ID)
+			return nil
+		case <-stream.Context().Done():
+			sugar.Infow("client disconnected", "id", in.ID)
+			return nil
+		case j := <-ch:
+			hw.Reset()
+			hw.JSON = j
+			err := stream.Send(hw)
+			if err != nil {
+				cacheErrors.With(labels).Inc()
+				err = errors.Wrap(err, "stream send")
+				sugar.Errorw(err.Error(), "id", in.ID)
+				return err
+			}
+		}
+	}
 }

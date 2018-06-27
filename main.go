@@ -169,6 +169,8 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 	cacher.RegisterCacherServer(s, &server{
 		packet: client,
 		db:     db,
+		quit:   ctx.Done(),
+		watch:  map[string]chan string{},
 		ingest: func() {
 			ingestFacility(ctx, client, db, api, facility)
 		},
