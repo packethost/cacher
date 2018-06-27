@@ -48,7 +48,7 @@ func getMaxErrs() int {
 	return max
 }
 
-func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
+func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api, facility string) {
 	label := prometheus.Labels{}
 	var errCount int
 	for errCount = 0; errCount < getMaxErrs(); errCount++ {
@@ -56,10 +56,15 @@ func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
 		label["op"] = "fetch"
 		ingestCount.With(label).Inc()
 		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		data, err := fetchFacility(client, api, facility)
+		data, err := fetchFacility(ctx, client, api, facility)
 		if err != nil {
 			ingestErrors.With(label).Inc()
 			sugar.Info(err)
+
+			if ctx.Err() == context.Canceled {
+				return
+			}
+
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -69,13 +74,17 @@ func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
 		sugar.Info("copying")
 		label["op"] = "copy"
 		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		if err = copyin(db, data); err != nil {
+		if err = copyin(ctx, db, data); err != nil {
 			ingestErrors.With(label).Inc()
 
 			sugar.Info(err)
 			if pqErr := pqError(err); pqErr != nil {
 				sugar.Info(pqErr.Detail)
 				sugar.Info(pqErr.Where)
+			}
+
+			if ctx.Err() == context.Canceled {
+				return
 			}
 
 			time.Sleep(5 * time.Second)
@@ -156,11 +165,12 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 	)
+
 	cacher.RegisterCacherServer(s, &server{
 		packet: client,
 		db:     db,
 		ingest: func() {
-			ingestFacility(client, db, api, facility)
+			ingestFacility(ctx, client, db, api, facility)
 		},
 	})
 	grpc_prometheus.Register(s)

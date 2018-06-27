@@ -35,9 +35,9 @@ func truncate(db *sql.DB) error {
 	return err
 }
 
-func copyin(db *sql.DB, data []map[string]interface{}) error {
+func copyin(ctx context.Context, db *sql.DB, data []map[string]interface{}) error {
 	now := time.Now()
-	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return errors.Wrap(err, "BEGIN transaction")
 	}
