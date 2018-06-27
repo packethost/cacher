@@ -201,3 +201,8 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 	cacheHits.With(labels).Inc()
 	return nil
 }
+
+// Watch implements cacher.CacherServer
+func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
+	return nil
+}
