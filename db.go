@@ -200,13 +200,6 @@ func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
 }
 
 func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
-	management := `
-	{
-	  "management": {
-	    "address": "` + ip + `"
-	  }
-	}
-	`
 	instance := `
 	{
 	  "instance": {
@@ -216,6 +209,15 @@ func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
 	      }
 	    ]
 	  }
+	}
+	`
+	hardwareOrManagement := `
+	{
+		"ip_addresses": [
+			{
+				"address": "` + ip + `"
+			}
+		]
 	}
 	`
 
@@ -231,7 +233,7 @@ func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
 	)
 	`
 
-	return get(ctx, db, query, management, instance)
+	return get(ctx, db, query, instance, hardwareOrManagement)
 }
 
 func getByID(ctx context.Context, db *sql.DB, id string) (string, error) {
