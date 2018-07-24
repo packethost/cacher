@@ -161,7 +161,6 @@ func get(ctx context.Context, db *sql.DB, query string, args ...interface{}) (st
 	buf := []byte{}
 	err := row.Scan(&buf)
 	if err == nil {
-		sugar.Info("got data:", string(buf))
 		return string(buf), nil
 	}
 

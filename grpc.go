@@ -53,12 +53,10 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		sugar.Info("ingestion goroutine is started")
 	})
 
-	sugar.Info(in.Data)
 	var h struct {
 		ID    string
 		State string
 	}
-
 	err := json.Unmarshal([]byte(in.Data), &h)
 	if err != nil {
 		cacheTotals.With(labels).Inc()
@@ -75,6 +73,8 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		sugar.Error(err)
 		return &cacher.Empty{}, err
 	}
+
+	sugar.Infow("data pushed", "id", h.ID)
 
 	var fn func() error
 	msg := ""
@@ -219,7 +219,6 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 
 // Watch implements cacher.CacherServer
 func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
-
 	ch := make(chan string, 1)
 	s.watchLock.Lock()
 	_, ok := s.watch[in.ID]
