@@ -225,10 +225,10 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 
 	ch := make(chan string, 1)
 	s.watchLock.Lock()
-	_, ok := s.watch[in.ID]
+	old, ok := s.watch[in.ID]
 	if ok {
-		s.watchLock.Unlock()
-		return errors.New("only one watch per id is allowed")
+		sugar.Info("evicting old watch")
+		close(old)
 	}
 	s.watch[in.ID] = ch
 	s.watchLock.Unlock()
@@ -236,7 +236,12 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 	labels := prometheus.Labels{"method": "Watch", "op": "push"}
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
+
+	disconnect := true
 	defer func() {
+		if !disconnect {
+			return
+		}
 		s.watchLock.Lock()
 		delete(s.watch, in.ID)
 		s.watchLock.Unlock()
@@ -252,7 +257,14 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 		case <-stream.Context().Done():
 			sugar.Info("client disconnected")
 			return status.Error(codes.OK, "client disconnected")
-		case j := <-ch:
+		case j, ok := <-ch:
+			if !ok {
+				disconnect = false
+				sugar.Info("we are being evicted, goodbye")
+				// ch was replaced and already closed
+				return status.Error(codes.Unknown, "evicted")
+			}
+
 			hw.Reset()
 			hw.JSON = j
 			err := stream.Send(hw)
