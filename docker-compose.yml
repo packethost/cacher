@@ -1,0 +1,43 @@
+---
+version: '2.1'
+services:
+  cacher:
+    image: quay.io/packet/cacher:latest
+    links:
+      - db:db
+    ports:
+      - 42111:42111
+      - 42112:42112
+    environment:
+      FACILITY: ${FACILIT:-lab1}
+      PACKET_API_AUTH_TOKEN: ${PACKET_API_AUTH_TOKEN}
+      PACKET_CONSUMER_TOKEN: ${PACKET_CONSUMER_TOKEN-djR2TAvbnkY92i8Ea2KFMZW6MusW1fk7qzeCUHgtnQRSsXnqxoCr6V2vhSxpqASf}
+      PACKET_API_URL: ${PACKET_API_URL:-https://lab-api.packet.net}
+      POSTGRES_DB: cacher
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: cacher
+      POSTGRES_USER: cacher
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:host_label: prov=true
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./certs/:/certs/
+  db:
+    image: quay.io/packet/cacher-db:v18.06.11.00
+    environment:
+      POSTGRES_DB: cacher
+      POSTGRES_PASSWORD: cacher
+      POSTGRES_USER: cacher
+    ports:
+      - 5432:5432
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:host_label: prov=true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
