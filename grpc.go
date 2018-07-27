@@ -219,6 +219,8 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 
 // Watch implements cacher.CacherServer
 func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
+	sugar = sugar.With("id", in.ID)
+
 	ch := make(chan string, 1)
 	s.watchLock.Lock()
 	_, ok := s.watch[in.ID]
@@ -243,10 +245,10 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 	for {
 		select {
 		case <-s.quit:
-			sugar.Info("server wants to shutdown", "id", in.ID)
+			sugar.Info("server is shutting down")
 			return nil
 		case <-stream.Context().Done():
-			sugar.Infow("client disconnected", "id", in.ID)
+			sugar.Info("client disconnected")
 			return nil
 		case j := <-ch:
 			hw.Reset()
@@ -255,7 +257,7 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 			if err != nil {
 				cacheErrors.With(labels).Inc()
 				err = errors.Wrap(err, "stream send")
-				sugar.Errorw(err.Error(), "id", in.ID)
+				sugar.Error(err.Error())
 				return err
 			}
 		}
