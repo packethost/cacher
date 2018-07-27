@@ -10,6 +10,8 @@ import (
 	"github.com/packethost/packngo"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type server struct {
@@ -246,10 +248,10 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 		select {
 		case <-s.quit:
 			sugar.Info("server is shutting down")
-			return nil
+			return status.Error(codes.OK, "server is shutting down")
 		case <-stream.Context().Done():
 			sugar.Info("client disconnected")
-			return nil
+			return status.Error(codes.OK, "client disconnected")
 		case j := <-ch:
 			hw.Reset()
 			hw.JSON = j
