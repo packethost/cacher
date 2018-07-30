@@ -10,17 +10,23 @@ import (
 	"github.com/packethost/packngo"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type server struct {
 	packet *packngo.Client
 	db     *sql.DB
+	quit   <-chan struct{}
 
 	once   sync.Once
 	ingest func()
 
-	mu      sync.RWMutex
+	dbLock  sync.RWMutex
 	dbReady bool
+
+	watchLock sync.RWMutex
+	watch     map[string]chan string
 }
 
 //go:generate protoc -I protos/cacher protos/cacher/cacher.proto --go_out=plugins=grpc:protos/cacher
@@ -41,20 +47,18 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		go func() {
 			sugar.Info("ingestion is starting")
 			s.ingest()
-			s.mu.Lock()
+			s.dbLock.Lock()
 			s.dbReady = true
-			s.mu.Unlock()
+			s.dbLock.Unlock()
 			sugar.Info("ingestion is done")
 		}()
 		sugar.Info("ingestion goroutine is started")
 	})
 
-	sugar.Info(in.Data)
 	var h struct {
 		ID    string
 		State string
 	}
-
 	err := json.Unmarshal([]byte(in.Data), &h)
 	if err != nil {
 		cacheTotals.With(labels).Inc()
@@ -72,14 +76,16 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		return &cacher.Empty{}, err
 	}
 
+	sugar.Infow("data pushed", "id", h.ID)
+
 	var fn func() error
 	msg := ""
 	if h.State != "deleted" {
 		labels["op"] = "insert"
-		msg = ("inserting into DB")
+		msg = "inserting into DB"
 		fn = func() error { return insertIntoDB(ctx, s.db, in.Data) }
 	} else {
-		msg = ("deleting from DB")
+		msg = "deleting from DB"
 		labels["op"] = "delete"
 		fn = func() error { return deleteFromDB(ctx, s.db, h.ID) }
 	}
@@ -100,23 +106,45 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		}
 	}
 
+	s.watchLock.RLock()
+	if ch := s.watch[h.ID]; ch != nil {
+		select {
+		case ch <- in.Data:
+		default:
+			watchMissTotal.Inc()
+			sugar.Errorw("skipping blocked watcher", "id", h.ID)
+		}
+	}
+	s.watchLock.RUnlock()
+
 	return &cacher.Empty{}, err
 }
 
+// Ingest implements cacher.CacherServer
+func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
+	sugar.Info("ingest")
+	labels := prometheus.Labels{"method": "Ingest", "op": ""}
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
+
+	s.once.Do(func() {
+		sugar.Info("ingestion is starting")
+		s.ingest()
+		s.dbLock.Lock()
+		s.dbReady = true
+		s.dbLock.Unlock()
+		sugar.Info("ingestion is done")
+	})
+
+	return &cacher.Empty{}, nil
+}
+
 func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware, error) {
-	labels := prometheus.Labels{"op": "get", "method": "By" + method}
+	labels := prometheus.Labels{"method": method, "op": "get"}
 
 	cacheTotals.With(labels).Inc()
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
-
-	s.mu.RLock()
-	ready := s.dbReady
-	s.mu.RUnlock()
-	if !ready {
-		cacheStalls.With(labels).Inc()
-		return &cacher.Hardware{}, errors.New("DB is not ready")
-	}
 
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
 	defer timer.ObserveDuration()
@@ -126,42 +154,52 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 		return &cacher.Hardware{}, err
 	}
 
+	if j == "" {
+		s.dbLock.RLock()
+		ready := s.dbReady
+		s.dbLock.RUnlock()
+		if !ready {
+			cacheStalls.With(labels).Inc()
+			return &cacher.Hardware{}, errors.New("DB is not ready")
+		}
+	}
+
 	cacheHits.With(labels).Inc()
 	return &cacher.Hardware{JSON: j}, nil
 }
 
 // ByMAC implements cacher.CacherServer
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return s.by("MAC", func() (string, error) {
+	return s.by("ByMAC", func() (string, error) {
 		return getByMAC(ctx, s.db, in.MAC)
 	})
 }
 
 // ByIP implements cacher.CacherServer
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return s.by("IP", func() (string, error) {
+	return s.by("ByIP", func() (string, error) {
 		return getByIP(ctx, s.db, in.IP)
 	})
 }
 
 // ByID implements cacher.CacherServer
 func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
-	return s.by("ID", func() (string, error) {
+	return s.by("ByID", func() (string, error) {
 		return getByID(ctx, s.db, in.ID)
 	})
 }
 
 // ALL implements cacher.CacherServer
 func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
-	labels := prometheus.Labels{"op": "get", "method": "All"}
+	labels := prometheus.Labels{"method": "All", "op": "get"}
 
 	cacheTotals.With(labels).Inc()
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	s.mu.RLock()
+	s.dbLock.RLock()
 	ready := s.dbReady
-	s.mu.RUnlock()
+	s.dbLock.RUnlock()
 	if !ready {
 		cacheStalls.With(labels).Inc()
 		return errors.New("DB is not ready")
@@ -179,4 +217,63 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 
 	cacheHits.With(labels).Inc()
 	return nil
+}
+
+// Watch implements cacher.CacherServer
+func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
+	sugar = sugar.With("id", in.ID)
+
+	ch := make(chan string, 1)
+	s.watchLock.Lock()
+	old, ok := s.watch[in.ID]
+	if ok {
+		sugar.Info("evicting old watch")
+		close(old)
+	}
+	s.watch[in.ID] = ch
+	s.watchLock.Unlock()
+
+	labels := prometheus.Labels{"method": "Watch", "op": "push"}
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
+
+	disconnect := true
+	defer func() {
+		if !disconnect {
+			return
+		}
+		s.watchLock.Lock()
+		delete(s.watch, in.ID)
+		s.watchLock.Unlock()
+		close(ch)
+	}()
+
+	hw := &cacher.Hardware{}
+	for {
+		select {
+		case <-s.quit:
+			sugar.Info("server is shutting down")
+			return status.Error(codes.OK, "server is shutting down")
+		case <-stream.Context().Done():
+			sugar.Info("client disconnected")
+			return status.Error(codes.OK, "client disconnected")
+		case j, ok := <-ch:
+			if !ok {
+				disconnect = false
+				sugar.Info("we are being evicted, goodbye")
+				// ch was replaced and already closed
+				return status.Error(codes.Unknown, "evicted")
+			}
+
+			hw.Reset()
+			hw.JSON = j
+			err := stream.Send(hw)
+			if err != nil {
+				cacheErrors.With(labels).Inc()
+				err = errors.Wrap(err, "stream send")
+				sugar.Error(err.Error())
+				return err
+			}
+		}
+	}
 }

@@ -35,9 +35,9 @@ func truncate(db *sql.DB) error {
 	return err
 }
 
-func copyin(db *sql.DB, data []map[string]interface{}) error {
+func copyin(ctx context.Context, db *sql.DB, data []map[string]interface{}) error {
 	now := time.Now()
-	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return errors.Wrap(err, "BEGIN transaction")
 	}
@@ -155,13 +155,12 @@ func insertIntoDB(ctx context.Context, db *sql.DB, data string) error {
 	return nil
 }
 
-func get(ctx context.Context, db *sql.DB, query, arg string) (string, error) {
-	row := db.QueryRowContext(ctx, query, arg)
+func get(ctx context.Context, db *sql.DB, query string, args ...interface{}) (string, error) {
+	row := db.QueryRowContext(ctx, query, args...)
 
 	buf := []byte{}
 	err := row.Scan(&buf)
 	if err == nil {
-		sugar.Info("got data:", string(buf))
 		return string(buf), nil
 	}
 
@@ -200,7 +199,7 @@ func getByMAC(ctx context.Context, db *sql.DB, mac string) (string, error) {
 }
 
 func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
-	arg := `
+	instance := `
 	{
 	  "instance": {
 	    "ip_addresses": [
@@ -211,17 +210,29 @@ func getByIP(ctx context.Context, db *sql.DB, ip string) (string, error) {
 	  }
 	}
 	`
+	hardwareOrManagement := `
+	{
+		"ip_addresses": [
+			{
+				"address": "` + ip + `"
+			}
+		]
+	}
+	`
 
 	query := `
 	SELECT data
 	FROM hardware
 	WHERE
 		deleted_at IS NULL
-	AND
+	AND (
 		data @> $1
+		OR
+		data @> $2
+	)
 	`
 
-	return get(ctx, db, query, arg)
+	return get(ctx, db, query, instance, hardwareOrManagement)
 }
 
 func getByID(ctx context.Context, db *sql.DB, id string) (string, error) {

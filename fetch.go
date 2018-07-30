@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -8,13 +9,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func fetchFacility(client *packngo.Client, api, facility string) ([]map[string]interface{}, error) {
+func fetchFacility(ctx context.Context, client *packngo.Client, api, facility string) ([]map[string]interface{}, error) {
 	var j []map[string]interface{}
 	for page, lastPage := 1, 1; page <= lastPage; page++ {
 		req, err := client.NewRequest("GET", api+"staff/cacher/hardware?facility="+facility+"&sort_by=created_at&sort_direction=asc&per_page=50&page="+strconv.Itoa(page), nil)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("NewRequest page=%d", page))
 		}
+		req = req.WithContext(ctx)
 		req.Header.Add("X-Packet-Staff", "true")
 
 		r := struct {

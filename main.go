@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"database/sql"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -44,7 +48,7 @@ func getMaxErrs() int {
 	return max
 }
 
-func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
+func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api, facility string) {
 	label := prometheus.Labels{}
 	var errCount int
 	for errCount = 0; errCount < getMaxErrs(); errCount++ {
@@ -52,10 +56,15 @@ func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
 		label["op"] = "fetch"
 		ingestCount.With(label).Inc()
 		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		data, err := fetchFacility(client, api, facility)
+		data, err := fetchFacility(ctx, client, api, facility)
 		if err != nil {
 			ingestErrors.With(label).Inc()
 			sugar.Info(err)
+
+			if ctx.Err() == context.Canceled {
+				return
+			}
+
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -65,13 +74,17 @@ func ingestFacility(client *packngo.Client, db *sql.DB, api, facility string) {
 		sugar.Info("copying")
 		label["op"] = "copy"
 		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		if err = copyin(db, data); err != nil {
+		if err = copyin(ctx, db, data); err != nil {
 			ingestErrors.With(label).Inc()
 
 			sugar.Info(err)
 			if pqErr := pqError(err); pqErr != nil {
 				sugar.Info(pqErr.Detail)
 				sugar.Info(pqErr.Where)
+			}
+
+			if ctx.Err() == context.Canceled {
+				return
 			}
 
 			time.Sleep(5 * time.Second)
@@ -112,20 +125,54 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) {
-	tc, err := credentials.NewServerTLSFromFile("/certs/"+facility+"/server.pem", "/certs/"+facility+"/server-key.pem")
+func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) ([]byte, time.Time) {
+	certsDir := os.Getenv("CACHER_CERTS_DIR")
+	if certsDir == "" {
+		certsDir = "/certs/" + facility
+	}
+	if !strings.HasSuffix(certsDir, "/") {
+		certsDir += "/"
+	}
+
+	certFile, err := os.Open(certsDir + "bundle.pem")
+	if err != nil {
+		sugar.Fatalf("failed to open TLS cert: %v", err)
+	}
+
+	var modT time.Time
+	if stat, err := certFile.Stat(); err != nil {
+		sugar.Fatalf("failed to stat cert TLS cert: %v", err)
+	} else {
+		modT = stat.ModTime()
+	}
+
+	certPEM, err := ioutil.ReadAll(certFile)
+	if err != nil {
+		sugar.Fatalf("failed to read TLS cert: %v", err)
+	}
+	keyPEM, err := ioutil.ReadFile(certsDir + "server-key.pem")
+	if err != nil {
+		sugar.Fatalf("failed to read TLS keyt: %v", err)
+	}
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		sugar.Fatalf("failed to read TLS files: %v", err)
 	}
-	s := grpc.NewServer(grpc.Creds(tc),
+
+	s := grpc.NewServer(
+		grpc.Creds(credentials.NewServerTLSFromCert(&cert)),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 	)
+
 	cacher.RegisterCacherServer(s, &server{
 		packet: client,
 		db:     db,
+		quit:   ctx.Done(),
+		watch:  map[string]chan string{},
 		ingest: func() {
-			ingestFacility(client, db, api, facility)
+			ingestFacility(ctx, client, db, api, facility)
 		},
 	})
 	grpc_prometheus.Register(s)
@@ -145,9 +192,13 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		s.GracefulStop()
 	}()
 
+	return certPEM, modT
 }
 
-func setupPromHTTP(ctx context.Context, errCh chan<- error) *http.Server {
+func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh chan<- error) *http.Server {
+	http.HandleFunc("/cert", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, "server.pem", modTime, bytes.NewReader(certPEM))
+	})
 	http.Handle("/metrics", promhttp.Handler())
 	srv := &http.Server{
 		Addr: httpListenAddr,
@@ -193,12 +244,12 @@ func main() {
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	setupGRPC(ctx, client, db, facility, errCh)
-	setupPromHTTP(ctx, errCh)
+	certPEM, modT := setupGRPC(ctx, client, db, facility, errCh)
+	setupHTTP(ctx, certPEM, modT, errCh)
 
 	var err error
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	select {
 	case err = <-errCh:
 		sugar.Fatal(err)

@@ -16,6 +16,8 @@ var (
 	ingestCount    *prometheus.CounterVec
 	ingestErrors   *prometheus.CounterVec
 	ingestDuration *prometheus.GaugeVec
+
+	watchMissTotal prometheus.Counter
 )
 
 func setupMetrics(facility string) {
@@ -53,7 +55,6 @@ func setupMetrics(facility string) {
 	sugar.Info("initializing label values")
 	var labels []prometheus.Labels
 
-	// Method Push
 	labels = []prometheus.Labels{
 		{"method": "Push", "op": ""},
 	}
@@ -73,6 +74,9 @@ func setupMetrics(facility string) {
 		{"method": "ByIP", "op": "get"},
 		{"method": "ByID", "op": "get"},
 		{"method": "All", "op": "get"},
+		{"method": "Ingest", "op": ""},
+		{"method": "Watch", "op": "get"},
+		{"method": "Watch", "op": "push"},
 	}
 	initCounterLabels(cacheErrors, labels)
 	initGaugeLabels(cacheInFlight, labels)
@@ -97,6 +101,11 @@ func setupMetrics(facility string) {
 	initCounterLabels(ingestCount, labels)
 	initGaugeLabels(ingestDuration, labels)
 	initCounterLabels(ingestErrors, labels)
+
+	watchMissTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "watch_miss_count_total",
+		Help: "Number of missed updates due to a blocked channel.",
+	})
 }
 
 func initObserverLabels(m prometheus.ObserverVec, l []prometheus.Labels) {
