@@ -271,7 +271,6 @@ func getAll(db *sql.DB, fn func(string) error) error {
 			return err
 		}
 
-		sugar.Info("got data:", string(buf))
 		err = fn(string(buf))
 		if err != nil {
 			return err
