@@ -221,7 +221,7 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 
 // Watch implements cacher.CacherServer
 func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
-	sugar = sugar.With("id", in.ID)
+	sugar := sugar.With("id", in.ID)
 
 	ch := make(chan string, 1)
 	s.watchLock.Lock()

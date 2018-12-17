@@ -20,9 +20,14 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+required = [
+  "github.com/golang/protobuf/protoc-gen-go",
+  "github.com/spf13/cobra/cobra",
+]
+
 [prune]
-  unused-packages = true
   go-tests = true
+  unused-packages = true
 
 [[constraint]]
   name = "github.com/grpc-ecosystem/go-grpc-prometheus"

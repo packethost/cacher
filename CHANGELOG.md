@@ -3,7 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
-## Unreleased
+## [18.12.17.00] - 2018-12-17
+### Added
+- Pinned nixpkgs
+- All tools necessary for dev are either pinned in nixpkgs or vendored as go code
+### Removed
+- "got data: $json" when calling All method
+### Fixed
+- id field in log lines is not correct
+
+## [18.07.30.00] - 2018-07-30
 ### Added
 - `CACHER_CERTS_DIR` env var for local dev purposes
 - Server cert bundle via http on /cert endpoint
