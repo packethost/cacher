@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	api    = "https://api.packet.net/"
-	sugar  *zap.SugaredLogger
+	api   = "https://api.packet.net/"
+	sugar *zap.SugaredLogger
+	// the git revision, set at build time
 	GitRev = "unknown"
 )
 
