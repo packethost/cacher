@@ -28,8 +28,8 @@ import (
 
 var (
 	api    = "https://api.packet.net/"
-	sugar  *zap.SugaredLogger
 	gitRev = "unknown"
+	sugar  *zap.SugaredLogger
 )
 
 const (
