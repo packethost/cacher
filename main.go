@@ -27,10 +27,9 @@ import (
 )
 
 var (
-	api   = "https://api.packet.net/"
-	sugar *zap.SugaredLogger
-	// GitRev is the git revision, set at build time
-	GitRev = "unknown"
+	api    = "https://api.packet.net/"
+	sugar  *zap.SugaredLogger
+	gitRev = "unknown"
 )
 
 const (
@@ -202,7 +201,7 @@ func versionHandler(w http.ResponseWriter, r *http.Request) {
 	res := struct {
 		GitRev string `json:"git_rev"`
 	}{
-		GitRev: GitRev,
+		GitRev: gitRev,
 	}
 	b, err := json.Marshal(&res)
 	if err != nil {
