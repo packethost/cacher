@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"encoding/json"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,8 +27,9 @@ import (
 )
 
 var (
-	api   = "https://api.packet.net/"
-	sugar *zap.SugaredLogger
+	api    = "https://api.packet.net/"
+	sugar  *zap.SugaredLogger
+	GitRev = "unknown"
 )
 
 const (
@@ -195,11 +197,27 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 	return certPEM, modT
 }
 
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	res := struct {
+		GitRev string `json:"git_rev"`
+	}{
+		GitRev: GitRev,
+	}
+	b, err := json.Marshal(&res)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		sugar.Error("problem parsing version output json")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
 func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh chan<- error) *http.Server {
 	http.HandleFunc("/cert", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeContent(w, r, "server.pem", modTime, bytes.NewReader(certPEM))
 	})
 	http.Handle("/metrics", promhttp.Handler())
+	http.HandleFunc("/version", versionHandler)
 	srv := &http.Server{
 		Addr: httpListenAddr,
 	}
