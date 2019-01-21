@@ -25,7 +25,7 @@ pipeline:
     group: ci
     image: golang:1.10-alpine
     commands:
-      - CGO_ENABLED=0 go build -ldflags="-X github.com/packethost/cacher/version.GitRev=${DRONE_COMMIT_SHA}
+      - CGO_ENABLED=0 go build -ldflags="-X github.com/packethost/cacher/version.GitRev=${DRONE_COMMIT_SHA}"
 
   publish_cacher_build:
     group: publish
