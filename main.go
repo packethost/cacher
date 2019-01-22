@@ -27,9 +27,10 @@ import (
 )
 
 var (
-	api    = "https://api.packet.net/"
-	gitRev = "unknown"
-	sugar  *zap.SugaredLogger
+	api        = "https://api.packet.net/"
+	gitRev     = "unknown"
+	gitRevJSON []byte
+	sugar      *zap.SugaredLogger
 )
 
 const (
@@ -198,6 +199,11 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 }
 
 func versionHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(gitRevJSON)
+}
+
+func setupGitRevJSON() {
 	res := struct {
 		GitRev string `json:"git_rev"`
 	}{
@@ -205,11 +211,9 @@ func versionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	b, err := json.Marshal(&res)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		sugar.Error("problem parsing version output json")
+		sugar.Error("could not marshal version json")
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+	gitRevJSON = b
 }
 
 func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh chan<- error) *http.Server {
@@ -217,6 +221,7 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 		http.ServeContent(w, r, "server.pem", modTime, bytes.NewReader(certPEM))
 	})
 	http.Handle("/metrics", promhttp.Handler())
+	setupGitRevJSON()
 	http.HandleFunc("/version", versionHandler)
 	srv := &http.Server{
 		Addr: httpListenAddr,
