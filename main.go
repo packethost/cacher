@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"encoding/json"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,8 +27,10 @@ import (
 )
 
 var (
-	api   = "https://api.packet.net/"
-	sugar *zap.SugaredLogger
+	api        = "https://api.packet.net/"
+	gitRev     = "unknown"
+	gitRevJSON []byte
+	sugar      *zap.SugaredLogger
 )
 
 const (
@@ -195,11 +198,33 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 	return certPEM, modT
 }
 
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(gitRevJSON)
+}
+
+func setupGitRevJSON() {
+	res := struct {
+		GitRev  string `json:"git_rev"`
+		Service string `json:"service_name"`
+	}{
+		GitRev:  gitRev,
+		Service: "cacher",
+	}
+	b, err := json.Marshal(&res)
+	if err != nil {
+		sugar.Error("could not marshal version json")
+	}
+	gitRevJSON = b
+}
+
 func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh chan<- error) *http.Server {
 	http.HandleFunc("/cert", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeContent(w, r, "server.pem", modTime, bytes.NewReader(certPEM))
 	})
 	http.Handle("/metrics", promhttp.Handler())
+	setupGitRevJSON()
+	http.HandleFunc("/version", versionHandler)
 	srv := &http.Server{
 		Addr: httpListenAddr,
 	}
