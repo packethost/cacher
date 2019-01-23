@@ -205,9 +205,11 @@ func versionHandler(w http.ResponseWriter, r *http.Request) {
 
 func setupGitRevJSON() {
 	res := struct {
-		GitRev string `json:"git_rev"`
+		GitRev  string `json:"git_rev"`
+		Service string `json:"service_name"`
 	}{
-		GitRev: gitRev,
+		GitRev:  gitRev,
+		Service: "cacher",
 	}
 	b, err := json.Marshal(&res)
 	if err != nil {
