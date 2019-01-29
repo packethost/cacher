@@ -2,3 +2,5 @@
 !/tls/
 !cacher
 !entrypoint.sh
+!deploy/migrate
+!db/docker-entrypoint-initdb.d/cacher-init.sql
