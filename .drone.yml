@@ -83,13 +83,14 @@ pipeline:
         --addr $NOMAD_ADDR
         deploy
         --env $ENV
-        --name pbnj
+        --name cacher
         --image quay.io/packet/cacher:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
         --site ewr1
         --resource_cpu 50
         --resource_mem 48
         --workers 1
         --internal-http-service cacher-staging.packet.net
+        --internal-grpc-service cacher-staging.packet.net
         --env-file 'deploy/staging-env'
     secrets: [nomad_addr, quay_user, quay_password]
     environment:
@@ -97,4 +98,12 @@ pipeline:
       ENV: staging
     when:
       event: [push]
+      branch: [master]
+
+  verify-staging:
+    image: quay.io/packet/packet-nomad:v1
+    commands:
+      - deploy/verify_url.sh http://cacher-staging.packet.net/_packet/healthcheck
+    when:
+      event: [push, tag]
       branch: [master]
