@@ -264,12 +264,12 @@ func main() {
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
 
-	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_http"); bindPort != "" && bindPort != httpListenAddr {
+	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_http"); ok {
 		httpListenAddr = ":" + bindPort
 	}
 
-	if bindPort := os.Getenv("CACHER_HTTP_ADDR"); bindPort != "" && bindPort != httpListenAddr {
-		httpListenAddr = ":" + bindPort
+	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_grpc"); ok {
+		grpcListenAddr = ":" + bindPort
 	}
 
 	ctx, closer := context.WithCancel(context.Background())
