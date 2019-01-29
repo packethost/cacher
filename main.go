@@ -27,13 +27,10 @@ import (
 )
 
 var (
-	api        = "https://api.packet.net/"
-	gitRev     = "unknown"
-	gitRevJSON []byte
-	sugar      *zap.SugaredLogger
-)
-
-const (
+	api            = "https://api.packet.net/"
+	gitRev         = "unknown"
+	gitRevJSON     []byte
+	sugar          *zap.SugaredLogger
 	grpcListenAddr = ":42111"
 	httpListenAddr = ":42112"
 )
@@ -266,6 +263,14 @@ func main() {
 	db := connectDB()
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
+
+	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_http"); bindPort != "" && bindPort != httpListenAddr {
+		httpListenAddr = ":" + bindPort
+	}
+
+	if bindPort := os.Getenv("CACHER_HTTP_ADDR"); bindPort != "" && bindPort != httpListenAddr {
+		httpListenAddr = ":" + bindPort
+	}
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
