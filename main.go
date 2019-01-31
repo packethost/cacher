@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
 	"github.com/prometheus/client_golang/prometheus"
