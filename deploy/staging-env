@@ -1,6 +1,6 @@
 {{with secret "postgres-cacher-staging/creds/owner"}}
-POSTGRES_USER={{.Data.username}}
-POSTGRES_PASSWORD={{.Data.password}}
+PGUSER={{.Data.username}}
+PGPASSWORD={{.Data.password}}
 {{end}}
 {{$secret_name := printf "secret/services/cacher/env/%s/api" (env "PACKET_ENV")}}
 {{with secret $secret_name}}
@@ -8,7 +8,7 @@ PACKET_API_AUTH_TOKEN={{.Data.PACKET_API_AUTH_TOKEN}}
 {{end}}
 PACKET_API_URL=https://api-staging.packet.net
 PACKET_CONSUMER_TOKEN=BWwu6WcKKygmBBGLtbR1j3GHLTaVL5FEvWbn2b3posB3BXngqafMRujJD3MmYFrc
-POSTGRES_DB=cacher-{{env "PACKET_ENV"}}
-POSTGRES_HOST=postgres-cacher-staging.service.packet.rocks
-POSTGRES_PORT=5443
+PGDATABASE=cacher-{{env "PACKET_ENV"}}
+PGHOST=postgres-cacher-staging.service.packet.rocks
+PGPORT=5443
 FACILITY={{env "NOMAD_DC"}}

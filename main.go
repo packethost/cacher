@@ -100,18 +100,7 @@ func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api
 }
 
 func connectDB() *sql.DB {
-	args := []string{
-		"dbname=" + os.Getenv("POSTGRES_DB"),
-		"host=" + os.Getenv("POSTGRES_HOST"),
-		"password=" + os.Getenv("POSTGRES_PASSWORD"),
-		"sslmode=disable",
-		"user=" + os.Getenv("POSTGRES_USER"),
-	}
-	if port := os.Getenv("POSTGRES_PORT"); port != "" {
-		args = append(args, "port="+port)
-	}
-
-	db, err := sql.Open("postgres", strings.Join(args, " "))
+	db, err := sql.Open("postgres", "")
 	if err != nil {
 		sugar.Fatal(err)
 	}
