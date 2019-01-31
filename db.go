@@ -166,7 +166,7 @@ func get(ctx context.Context, db *sql.DB, query string, args ...interface{}) (st
 
 	if err != sql.ErrNoRows {
 		err = errors.Wrap(err, "SELECT")
-		sugar.Error(err)
+		logger.Error(err)
 	} else {
 		err = nil
 	}
@@ -267,7 +267,7 @@ func getAll(db *sql.DB, fn func(string) error) error {
 		err = rows.Scan(&buf)
 		if err != nil {
 			err = errors.Wrap(err, "SELECT")
-			sugar.Error(err)
+			logger.Error(err)
 			return err
 		}
 

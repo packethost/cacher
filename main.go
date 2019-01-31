@@ -19,9 +19,10 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
+	"github.com/packethost/pkg/log"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -30,7 +31,7 @@ var (
 	api            = "https://api.packet.net/"
 	gitRev         = "unknown"
 	gitRevJSON     []byte
-	sugar          *zap.SugaredLogger
+	logger         log.Logger
 	grpcListenAddr = ":42111"
 	httpListenAddr = ":42112"
 )
@@ -52,14 +53,14 @@ func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api
 	label := prometheus.Labels{}
 	var errCount int
 	for errCount = 0; errCount < getMaxErrs(); errCount++ {
-		sugar.Infow("starting fetch")
+		logger.Info("starting fetch")
 		label["op"] = "fetch"
 		ingestCount.With(label).Inc()
 		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		data, err := fetchFacility(ctx, client, api, facility)
 		if err != nil {
 			ingestErrors.With(label).Inc()
-			sugar.Info(err)
+			logger.With("error", err).Info()
 
 			if ctx.Err() == context.Canceled {
 				return
@@ -69,19 +70,19 @@ func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api
 			continue
 		}
 		timer.ObserveDuration()
-		sugar.Info("done fetching")
+		logger.Info("done fetching")
 
-		sugar.Info("copying")
+		logger.Info("copying")
 		label["op"] = "copy"
 		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		if err = copyin(ctx, db, data); err != nil {
 			ingestErrors.With(label).Inc()
 
-			sugar.Info(err)
+			l := logger.With("error", err)
 			if pqErr := pqError(err); pqErr != nil {
-				sugar.Info(pqErr.Detail)
-				sugar.Info(pqErr.Where)
+				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
 			}
+			l.Info()
 
 			if ctx.Err() == context.Canceled {
 				return
@@ -91,23 +92,25 @@ func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api
 			continue
 		}
 		timer.ObserveDuration()
-		sugar.Info("done copying")
+		logger.Info("done copying")
 		break
 	}
 	if errCount >= getMaxErrs() {
-		sugar.Fatal("maximum fetch/copy errors reached")
+		err := errors.New("maximum fetch/copy errors reached")
+		logger.Error(err)
+		panic(err)
 	}
 }
 
 func connectDB() *sql.DB {
 	db, err := sql.Open("postgres", "")
 	if err != nil {
-		sugar.Fatal(err)
+		logger.Error(err)
+		panic(err)
 	}
 	if err := truncate(db); err != nil {
 		if pqErr := pqError(err); pqErr != nil {
-			sugar.Info(pqErr.Detail)
-			sugar.Info(pqErr.Where)
+			logger.With("detail", pqErr.Detail, "where", pqErr.Where).Error(err)
 		}
 		panic(err)
 	}
@@ -125,28 +128,38 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 
 	certFile, err := os.Open(certsDir + "bundle.pem")
 	if err != nil {
-		sugar.Fatalf("failed to open TLS cert: %v", err)
+		err = errors.Wrap(err, "failed to open TLS cert")
+		logger.Error(err)
+		panic(err)
 	}
 
 	var modT time.Time
 	if stat, err := certFile.Stat(); err != nil {
-		sugar.Fatalf("failed to stat cert TLS cert: %v", err)
+		err = errors.Wrap(err, "failed to stat TLS cert")
+		logger.Error(err)
+		panic(err)
 	} else {
 		modT = stat.ModTime()
 	}
 
 	certPEM, err := ioutil.ReadAll(certFile)
 	if err != nil {
-		sugar.Fatalf("failed to read TLS cert: %v", err)
+		err = errors.Wrap(err, "failed to read TLS cert")
+		logger.Error(err)
+		panic(err)
 	}
 	keyPEM, err := ioutil.ReadFile(certsDir + "server-key.pem")
 	if err != nil {
-		sugar.Fatalf("failed to read TLS keyt: %v", err)
+		err = errors.Wrap(err, "failed to read TLS key")
+		logger.Error(err)
+		panic(err)
 	}
 
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
-		sugar.Fatalf("failed to read TLS files: %v", err)
+		err = errors.Wrap(err, "failed to ingest TLS files")
+		logger.Error(err)
+		panic(err)
 	}
 
 	s := grpc.NewServer(
@@ -167,10 +180,12 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 	grpc_prometheus.Register(s)
 
 	go func() {
-		sugar.Info("serving grpc")
+		logger.Info("serving grpc")
 		lis, err := net.Listen("tcp", grpcListenAddr)
 		if err != nil {
-			sugar.Fatalf("failed to listen: %v", err)
+			err = errors.Wrap(err, "failed to listen")
+			logger.Error(err)
+			panic(err)
 		}
 
 		errCh <- s.Serve(lis)
@@ -199,7 +214,9 @@ func setupGitRevJSON() {
 	}
 	b, err := json.Marshal(&res)
 	if err != nil {
-		sugar.Error("could not marshal version json")
+		err = errors.Wrap(err, "could not marshal version json")
+		logger.Error(err)
+		panic(err)
 	}
 	gitRevJSON = b
 }
@@ -215,7 +232,7 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 		Addr: httpListenAddr,
 	}
 	go func() {
-		sugar.Info("serving http")
+		logger.Info("serving http")
 		err := srv.ListenAndServe()
 		if err == http.ErrServerClosed {
 			err = nil
@@ -229,17 +246,13 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 	return srv
 }
 
-func setupLogging() *zap.SugaredLogger {
-	log, err := zap.NewProduction()
+func main() {
+	log, cleanup, err := log.Init("github.com/packethost/cacher")
 	if err != nil {
 		panic(err)
 	}
-	sugar = log.Sugar()
-	return sugar
-}
-
-func main() {
-	defer setupLogging().Sync()
+	logger = log
+	defer cleanup()
 
 	if url := os.Getenv("PACKET_API_URL"); url != "" && url != api {
 		api = url
@@ -266,24 +279,26 @@ func main() {
 	certPEM, modT := setupGRPC(ctx, client, db, facility, errCh)
 	setupHTTP(ctx, certPEM, modT, errCh)
 
-	var err error
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	select {
 	case err = <-errCh:
-		sugar.Fatal(err)
+		logger.Error(err)
+		panic(err)
 	case sig := <-sigs:
-		sugar.Infow("signal received, stopping servers", "signal", sig.String())
+		logger.With("signal", sig.String()).Info("signal received, stopping servers")
 	}
 	closer()
 
 	// wait for both grpc and http servers to shutdown
 	err = <-errCh
 	if err != nil {
-		sugar.Fatal(err)
+		logger.Error(err)
+		panic(err)
 	}
 	err = <-errCh
 	if err != nil {
-		sugar.Fatal(err)
+		logger.Error(err)
+		panic(err)
 	}
 }

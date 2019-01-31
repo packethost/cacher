@@ -38,7 +38,7 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api, facility st
 
 		j = append(j, r.Hardware...)
 		lastPage = r.Meta.LastPage
-		sugar.Infow("fetched a page", "have", len(j), "want", r.Meta.Total)
+		logger.With("have", len(j), "want", r.Meta.Total).Info("fetched a page")
 	}
 	return j, nil
 }

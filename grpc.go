@@ -33,7 +33,7 @@ type server struct {
 
 // Push implements cacher.CacherServer
 func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empty, error) {
-	sugar.Info("push")
+	logger.Info("push")
 	labels := prometheus.Labels{"method": "Push", "op": ""}
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
@@ -42,17 +42,17 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	labels = prometheus.Labels{"method": "Push", "op": ""}
 
 	s.once.Do(func() {
-		sugar.Info("ingestion goroutine is starting")
+		logger.Info("ingestion goroutine is starting")
 		// in a goroutine to not block Push and possibly timeout
 		go func() {
-			sugar.Info("ingestion is starting")
+			logger.Info("ingestion is starting")
 			s.ingest()
 			s.dbLock.Lock()
 			s.dbReady = true
 			s.dbLock.Unlock()
-			sugar.Info("ingestion is done")
+			logger.Info("ingestion is done")
 		}()
-		sugar.Info("ingestion goroutine is started")
+		logger.Info("ingestion goroutine is started")
 	})
 
 	var h struct {
@@ -64,7 +64,7 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		cacheTotals.With(labels).Inc()
 		cacheErrors.With(labels).Inc()
 		err = errors.Wrap(err, "unmarshal json")
-		sugar.Error(err)
+		logger.Error(err)
 		return &cacher.Empty{}, err
 	}
 
@@ -72,11 +72,11 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		cacheTotals.With(labels).Inc()
 		cacheErrors.With(labels).Inc()
 		err = errors.New("id must be set to a UUID")
-		sugar.Error(err)
+		logger.Error(err)
 		return &cacher.Empty{}, err
 	}
 
-	sugar.Infow("data pushed", "id", h.ID)
+	logger.With("id", h.ID).Info("data pushed")
 
 	var fn func() error
 	msg := ""
@@ -94,16 +94,16 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
 	defer timer.ObserveDuration()
 
-	sugar.Info(msg)
+	logger.Info(msg)
 	err = fn()
-	sugar.Info("done " + msg)
+	logger.Info("done " + msg)
 	if err != nil {
 		cacheErrors.With(labels).Inc()
-		sugar.Error(err)
+		l := logger
 		if pqErr := pqError(err); pqErr != nil {
-			sugar.Error(pqErr.Detail)
-			sugar.Error(pqErr.Where)
+			l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
 		}
+		l.Error(err)
 	}
 
 	s.watchLock.RLock()
@@ -112,7 +112,7 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		case ch <- in.Data:
 		default:
 			watchMissTotal.Inc()
-			sugar.Errorw("skipping blocked watcher", "id", h.ID)
+			logger.With("id", h.ID).Info("skipping blocked watcher")
 		}
 	}
 	s.watchLock.RUnlock()
@@ -122,18 +122,18 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 
 // Ingest implements cacher.CacherServer
 func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
-	sugar.Info("ingest")
+	logger.Info("ingest")
 	labels := prometheus.Labels{"method": "Ingest", "op": ""}
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
 	s.once.Do(func() {
-		sugar.Info("ingestion is starting")
+		logger.Info("ingestion is starting")
 		s.ingest()
 		s.dbLock.Lock()
 		s.dbReady = true
 		s.dbLock.Unlock()
-		sugar.Info("ingestion is done")
+		logger.Info("ingestion is done")
 	})
 
 	return &cacher.Empty{}, nil
@@ -221,13 +221,13 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 
 // Watch implements cacher.CacherServer
 func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
-	sugar := sugar.With("id", in.ID)
+	l := logger.With("id", in.ID)
 
 	ch := make(chan string, 1)
 	s.watchLock.Lock()
 	old, ok := s.watch[in.ID]
 	if ok {
-		sugar.Info("evicting old watch")
+		l.Info("evicting old watch")
 		close(old)
 	}
 	s.watch[in.ID] = ch
@@ -252,15 +252,15 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 	for {
 		select {
 		case <-s.quit:
-			sugar.Info("server is shutting down")
+			l.Info("server is shutting down")
 			return status.Error(codes.OK, "server is shutting down")
 		case <-stream.Context().Done():
-			sugar.Info("client disconnected")
+			l.Info("client disconnected")
 			return status.Error(codes.OK, "client disconnected")
 		case j, ok := <-ch:
 			if !ok {
 				disconnect = false
-				sugar.Info("we are being evicted, goodbye")
+				l.Info("we are being evicted, goodbye")
 				// ch was replaced and already closed
 				return status.Error(codes.Unknown, "evicted")
 			}
@@ -271,7 +271,7 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 			if err != nil {
 				cacheErrors.With(labels).Inc()
 				err = errors.Wrap(err, "stream send")
-				sugar.Error(err.Error())
+				l.Error(err)
 				return err
 			}
 		}
