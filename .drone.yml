@@ -57,7 +57,7 @@ pipeline:
         --addr $NOMAD_ADDR
         deploy
         --env $ENV
-        --name pbnj
+        --name cacher
         --image quay.io/packet/cacher:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
         --site ewr1
         --resource_cpu 50
