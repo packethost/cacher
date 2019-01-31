@@ -57,8 +57,8 @@ pipeline:
         --addr $NOMAD_ADDR
         deploy
         --env $ENV
-        --name cacher
-        --image quay.io/packet/cacher:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
+        --name ${SERVICE}
+        --image quay.io/packet/${SERVICE}:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
         --site ewr1
         --resource_cpu 50
         --resource_mem 48
@@ -71,6 +71,7 @@ pipeline:
     environment:
       DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
       ENV: staging
+      SERVICE: cacher
     when:
       event: [push]
       branch: [master]
@@ -83,19 +84,20 @@ pipeline:
         --addr $NOMAD_ADDR
         deploy
         --env $ENV
-        --name cacher
-        --image quay.io/packet/cacher:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
+        --name ${SERVICE}
+        --image quay.io/packet/${SERVICE}:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
         --site ewr1
         --resource_cpu 50
         --resource_mem 48
         --workers 1
-        --internal-http-service cacher-staging.packet.net
-        --internal-grpc-service cacher-staging.packet.net
+        --internal-http-service ${SERVICE}-${ENV}.packet.net
+        --internal-grpc-service ${SERVICE}-${ENV}.packet.net
         --env-file 'deploy/staging-env'
     secrets: [nomad_addr, quay_user, quay_password]
     environment:
       DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
       ENV: staging
+      SERVICE: cacher
     when:
       event: [push]
       branch: [master]
