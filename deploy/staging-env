@@ -9,7 +9,7 @@ PACKET_API_AUTH_TOKEN={{.Data.PACKET_API_AUTH_TOKEN}}
 PACKET_CONSUMER_TOKEN={{.Data.PACKET_CONSUMER_TOKEN}}
 {{end}}
 PACKET_API_URL=https://api-staging.packet.net
-PGDATABASE=cacher-{{env "PACKET_ENV"}}
-PGHOST=postgres-cacher-staging.service.packet.rocks
+PGDATABASE={{env "SERVICE"}}-{{env "PACKET_ENV"}}
+PGHOST=postgres-{{env "SERVICE"}}-{{env "PACKET_ENV"}}.service.packet.rocks
 PGPORT=5443
 FACILITY={{env "NOMAD_DC"}}
