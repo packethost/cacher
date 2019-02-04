@@ -27,13 +27,10 @@ import (
 )
 
 var (
-	api        = "https://api.packet.net/"
-	gitRev     = "unknown"
-	gitRevJSON []byte
-	sugar      *zap.SugaredLogger
-)
-
-const (
+	api            = "https://api.packet.net/"
+	gitRev         = "unknown"
+	gitRevJSON     []byte
+	sugar          *zap.SugaredLogger
 	grpcListenAddr = ":42111"
 	httpListenAddr = ":42112"
 )
@@ -103,18 +100,7 @@ func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api
 }
 
 func connectDB() *sql.DB {
-	args := []string{
-		"dbname=" + os.Getenv("POSTGRES_DB"),
-		"host=" + os.Getenv("POSTGRES_HOST"),
-		"password=" + os.Getenv("POSTGRES_PASSWORD"),
-		"sslmode=disable",
-		"user=" + os.Getenv("POSTGRES_USER"),
-	}
-	if port := os.Getenv("POSTGRES_PORT"); port != "" {
-		args = append(args, "port="+port)
-	}
-
-	db, err := sql.Open("postgres", strings.Join(args, " "))
+	db, err := sql.Open("postgres", "")
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -266,6 +252,14 @@ func main() {
 	db := connectDB()
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
+
+	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_http"); ok {
+		httpListenAddr = ":" + bindPort
+	}
+
+	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_grpc"); ok {
+		grpcListenAddr = ":" + bindPort
+	}
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
