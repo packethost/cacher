@@ -1,8 +1,8 @@
 ---
 version: '2.1'
 services:
-  cacher:
-    image: quay.io/packet/cacher:latest
+  app:
+    build: .
     links:
       - db:db
     ports:
