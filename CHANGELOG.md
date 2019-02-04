@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
+## Unreleased
+### Added
+- Drone CD flow for Hashistack SWE-1981
+
 ## [19.01.21.00] - 2019-01-21
 ### Added
 - `/version` http endpoint that returns json including the current git revision (set at build time)
