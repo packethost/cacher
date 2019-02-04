@@ -25,7 +25,7 @@ pipeline:
     group: ci
     image: golang:1.10-alpine
     commands:
-      - CGO_ENABLED=0 go build -ldflags="-X main.gitrev=${DRONE_COMMIT_SHA}"
+      - CGO_ENABLED=0 go build -ldflags="-X main.gitrev=${DRONE_COMMIT_SHA}" -o cacher-linux-x86_64
 
   publish:
     group: publish
