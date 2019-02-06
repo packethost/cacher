@@ -13,3 +13,6 @@ PGDATABASE={{env "SERVICE"}}-{{env "PACKET_ENV"}}
 PGHOST=postgres-{{env "SERVICE"}}-{{env "PACKET_ENV"}}.service.packet.rocks
 PGPORT=5443
 FACILITY={{env "NOMAD_DC"}}
+{{with secret "secret/certificates/star-packet-net-2018-11-01"}}
+TLS_CERT="{{.Data.cert}}\n{{.Data.bundle}}"
+{{end}}
