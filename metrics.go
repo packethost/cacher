@@ -52,7 +52,7 @@ func setupMetrics(facility string) {
 		Help: "Number of cache ops.",
 	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
 
-	sugar.Info("initializing label values")
+	logger.Info("initializing label values")
 	var labels []prometheus.Labels
 
 	labels = []prometheus.Labels{

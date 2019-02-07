@@ -124,6 +124,17 @@
   revision = "dff6ec250ba6085b63b56b5f1e2e69c6dad7569f"
 
 [[projects]]
+  branch = "master"
+  digest = "1:3acc9e7da93e17f2ad7d280b175f1f4e3783e22be39ecf9bc5c93d9239c45a1e"
+  name = "github.com/packethost/pkg"
+  packages = [
+    "log",
+    "log/internal/rollbar",
+  ]
+  pruneopts = "UT"
+  revision = "2e384261c92a3caaf7fed1ab55606dddddcb94ca"
+
+[[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
@@ -183,6 +194,14 @@
   ]
   pruneopts = "UT"
   revision = "94663424ae5ae9856b40a9f170762b4197024661"
+
+[[projects]]
+  digest = "1:03a89169777b38862145711ef2317a36e19e1cdf717ab622e196f6a851b71ad9"
+  name = "github.com/rollbar/rollbar-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d450a931d7a085523b60f0f7c98487333a8ce5fa"
+  version = "v1.0.2"
 
 [[projects]]
   digest = "1:274f67cb6fed9588ea2521ecdac05a6d62a8c51c074c1fccc6a49a40ba80e925"
@@ -383,6 +402,7 @@
     "github.com/grpc-ecosystem/go-grpc-prometheus",
     "github.com/lib/pq",
     "github.com/packethost/packngo",
+    "github.com/packethost/pkg/log",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promauto",
@@ -391,7 +411,6 @@
     "github.com/spf13/cobra",
     "github.com/spf13/cobra/cobra",
     "github.com/spf13/viper",
-    "go.uber.org/zap",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
