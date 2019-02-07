@@ -155,7 +155,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 			modT = stat.ModTime()
 		}
 
-		certPEM, err := ioutil.ReadAll(certFile)
+		certPEM, err = ioutil.ReadAll(certFile)
 		if err != nil {
 			err = errors.Wrap(err, "failed to read TLS cert")
 			logger.Error(err)
