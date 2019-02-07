@@ -1,23 +1,18 @@
-{{$secret_name := printf "postgres-%s-%s/creds/owner" (env "SERVICE") (env "PACKET_ENV")}}
+{{$secret_name := printf "postgres-cacher-%s/creds/owner" (env "PACKET_ENV")}}
 {{with secret $secret_name}}
 PGUSER={{.Data.username}}
 PGPASSWORD={{.Data.password}}
 {{end}}
-{{$secret_name := printf "secret/services/%s/env/%s/api" (env "SERVICE") (env "PACKET_ENV")}}
+{{$secret_name := printf "secret/services/cacher/env/%s/api" (env "PACKET_ENV")}}
 {{with secret $secret_name}}
 PACKET_API_AUTH_TOKEN={{.Data.PACKET_API_AUTH_TOKEN}}
 PACKET_CONSUMER_TOKEN={{.Data.PACKET_CONSUMER_TOKEN}}
 {{end}}
 PACKET_API_URL=https://api-staging.packet.net
-PGDATABASE={{env "SERVICE"}}-{{env "PACKET_ENV"}}
-PGHOST=postgres-{{env "SERVICE"}}-{{env "PACKET_ENV"}}.service.packet.rocks
+PGDATABASE=cacher-{{env "PACKET_ENV"}}
+PGHOST=postgres-cacher-{{env "PACKET_ENV"}}.service.packet.rocks
 PGPORT=5443
 FACILITY={{env "NOMAD_DC"}}
-{{$secret_name := printf "secret/services/%s/service/ssl" (env "SERVICE")}}
-{{with secret $secret_name}}
-CACHER_TLS_CERT="{{.Data.cert}}\n{{.Data.bundle}}"
-{{end}}
-{{$secret_name := printf "secret/services/%s/service/rollbar" (env "SERVICE")}}
-{{with secret $secret_name}}
+{{with secret "secret/services/cacher/service/rollbar"}}
 ROLLBAR_TOKEN="{{.Data.token}}"
 {{end}}
