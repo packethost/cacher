@@ -119,8 +119,8 @@ func connectDB() *sql.DB {
 
 func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) ([]byte, time.Time) {
 	var (
-		modT    time.Time
 		certPEM []byte
+		modT    time.Time
 	)
 
 	params := []grpc.ServerOption{
