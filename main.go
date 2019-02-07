@@ -118,55 +118,67 @@ func connectDB() *sql.DB {
 }
 
 func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) ([]byte, time.Time) {
-	certsDir := os.Getenv("CACHER_CERTS_DIR")
-	if certsDir == "" {
-		certsDir = "/certs/" + facility
-	}
-	if !strings.HasSuffix(certsDir, "/") {
-		certsDir += "/"
-	}
+	var (
+		certPEM []byte
+		modT    time.Time
+	)
 
-	certFile, err := os.Open(certsDir + "bundle.pem")
-	if err != nil {
-		err = errors.Wrap(err, "failed to open TLS cert")
-		logger.Error(err)
-		panic(err)
-	}
-
-	var modT time.Time
-	if stat, err := certFile.Stat(); err != nil {
-		err = errors.Wrap(err, "failed to stat TLS cert")
-		logger.Error(err)
-		panic(err)
-	} else {
-		modT = stat.ModTime()
-	}
-
-	certPEM, err := ioutil.ReadAll(certFile)
-	if err != nil {
-		err = errors.Wrap(err, "failed to read TLS cert")
-		logger.Error(err)
-		panic(err)
-	}
-	keyPEM, err := ioutil.ReadFile(certsDir + "server-key.pem")
-	if err != nil {
-		err = errors.Wrap(err, "failed to read TLS key")
-		logger.Error(err)
-		panic(err)
-	}
-
-	cert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		err = errors.Wrap(err, "failed to ingest TLS files")
-		logger.Error(err)
-		panic(err)
-	}
-
-	s := grpc.NewServer(
-		grpc.Creds(credentials.NewServerTLSFromCert(&cert)),
+	params := []grpc.ServerOption{
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-	)
+	}
+
+	if cert := os.Getenv("CACHER_TLS_CERT"); cert != "" {
+		certPEM = []byte(cert)
+		modT = time.Now()
+	} else {
+		certsDir := os.Getenv("CACHER_CERTS_DIR")
+		if certsDir == "" {
+			certsDir = "/certs/" + facility
+		}
+		if !strings.HasSuffix(certsDir, "/") {
+			certsDir += "/"
+		}
+
+		certFile, err := os.Open(certsDir + "bundle.pem")
+		if err != nil {
+			err = errors.Wrap(err, "failed to open TLS cert")
+			logger.Error(err)
+			panic(err)
+		}
+
+		if stat, err := certFile.Stat(); err != nil {
+			err = errors.Wrap(err, "failed to stat TLS cert")
+			logger.Error(err)
+			panic(err)
+		} else {
+			modT = stat.ModTime()
+		}
+
+		certPEM, err = ioutil.ReadAll(certFile)
+		if err != nil {
+			err = errors.Wrap(err, "failed to read TLS cert")
+			logger.Error(err)
+			panic(err)
+		}
+		keyPEM, err := ioutil.ReadFile(certsDir + "server-key.pem")
+		if err != nil {
+			err = errors.Wrap(err, "failed to read TLS key")
+			logger.Error(err)
+			panic(err)
+		}
+
+		cert, err := tls.X509KeyPair(certPEM, keyPEM)
+		if err != nil {
+			err = errors.Wrap(err, "failed to ingest TLS files")
+			logger.Error(err)
+			panic(err)
+		}
+
+		params = append(params, grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
+	}
+
+	s := grpc.NewServer(params...)
 
 	cacher.RegisterCacherServer(s, &server{
 		packet: client,

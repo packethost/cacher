@@ -13,3 +13,11 @@ PGDATABASE={{env "SERVICE"}}-{{env "PACKET_ENV"}}
 PGHOST=postgres-{{env "SERVICE"}}-{{env "PACKET_ENV"}}.service.packet.rocks
 PGPORT=5443
 FACILITY={{env "NOMAD_DC"}}
+{{$secret_name := printf "secret/services/%s/service/ssl" (env "SERVICE")}}
+{{with secret $secret_name}}
+CACHER_TLS_CERT="{{.Data.cert}}\n{{.Data.bundle}}"
+{{end}}
+{{$secret_name := printf "secret/services/%s/service/rollbar" (env "SERVICE")}}
+{{with secret $secret_name}}
+ROLLBAR_TOKEN="{{.Data.token}}"
+{{end}}

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ### Added
 - Drone CD flow for Hashistack SWE-1981
 - rollbar integration via our internal logging library
+- SWE-2058 | Run without cacher side TLS under Hashistack
 ### Changed
 - Use our internal logging library instead of just zap
 - docker-compose will now run/build a local image instead of a production one
