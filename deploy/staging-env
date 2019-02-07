@@ -16,3 +16,6 @@ FACILITY={{env "NOMAD_DC"}}
 {{with secret "secret/services/cacher/service/ssl"}}
 CACHER_TLS_CERT="{{.Data.cert}}\n{{.Data.bundle}}"
 {{end}}
+{{with secret = "secret/services/cacher/service/rollbar"}}
+ROLLBAR_TOKEN="{{.Data.token}}"
+{{end}}
