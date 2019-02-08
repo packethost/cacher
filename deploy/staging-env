@@ -13,6 +13,9 @@ PGDATABASE=cacher-{{env "PACKET_ENV"}}
 PGHOST=postgres-cacher-{{env "PACKET_ENV"}}.service.packet.rocks
 PGPORT=5443
 FACILITY={{env "NOMAD_DC"}}
+{{with secret "secret/services/cacher/service/ssl"}}
+CACHER_TLS_CERT="{{.Data.cert | toJSON}}\\n{{.Data.bundle | toJSON}}"
+{{end}}
 {{with secret "secret/services/cacher/service/rollbar"}}
 ROLLBAR_TOKEN="{{.Data.token}}"
 {{end}}
