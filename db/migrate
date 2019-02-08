@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Import initial schema
 psql -f /init.sql
