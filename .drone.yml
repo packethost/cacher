@@ -72,7 +72,6 @@ pipeline:
       DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
       ENV: staging
       SERVICE: cacher
-      SERVICE_NAME: cacher
     when:
       event: [push]
       # branch: [master]
@@ -101,7 +100,7 @@ pipeline:
       SERVICE: cacher
     when:
       event: [push]
-      branch: [master]
+      # branch: [master]
 
   verify-staging:
     image: quay.io/packet/packet-nomad:v1
