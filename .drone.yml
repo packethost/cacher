@@ -74,7 +74,7 @@ pipeline:
       SERVICE: cacher
     when:
       event: [push]
-      # branch: [master]
+      branch: [master]
 
   deploy-app-staging:
     image: quay.io/packet/packet-nomad:v1
@@ -91,7 +91,7 @@ pipeline:
         --resource_mem 48
         --workers 1
         --internal-http-service $SERVICE-$ENV.packet.net
-        --internal-grpc-service $SERVICE-$ENV.packet.net
+        --internal-grpc-service $SERVICE-$ENV-grpc.packet.net
         --env-file 'deploy/staging-env'
     secrets: [nomad_addr, quay_user, quay_password]
     environment:
@@ -100,7 +100,7 @@ pipeline:
       SERVICE: cacher
     when:
       event: [push]
-      # branch: [master]
+      branch: [master]
 
   verify-staging:
     image: quay.io/packet/packet-nomad:v1
