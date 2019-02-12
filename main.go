@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -34,6 +35,7 @@ var (
 	logger         log.Logger
 	grpcListenAddr = ":42111"
 	httpListenAddr = ":42112"
+	StartTime      = time.Now()
 )
 
 func getMaxErrs() int {
@@ -216,6 +218,26 @@ func versionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(gitRevJSON)
 }
 
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	res := struct {
+		GitRev     string  `json:"git_rev"`
+		Uptime     float64 `json:"uptime"`
+		Goroutines int     `json:"goroutines"`
+	}{
+		GitRev:     gitRev,
+		Uptime:     time.Since(StartTime).Seconds(),
+		Goroutines: runtime.NumGoroutine(),
+	}
+
+	b, err := json.Marshal(&res)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
 func setupGitRevJSON() {
 	res := struct {
 		GitRev  string `json:"git_rev"`
@@ -240,6 +262,7 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 	http.Handle("/metrics", promhttp.Handler())
 	setupGitRevJSON()
 	http.HandleFunc("/version", versionHandler)
+	http.HandleFunc("/_packet/healthcheck", healthCheckHandler)
 	srv := &http.Server{
 		Addr: httpListenAddr,
 	}
