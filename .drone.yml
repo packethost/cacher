@@ -65,7 +65,7 @@ pipeline:
         --workers 1
         --internal-http-service $SERVICE-$ENV.packet.net
         --internal-grpc-service $SERVICE-$ENV-grpc.packet.net
-        --env-file deploy/staging-env
+        --env-file deploy/env
     secrets: [nomad_addr, quay_user, quay_password]
     environment:
       DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
