@@ -11,11 +11,13 @@ PACKET_CONSUMER_TOKEN={{.Data.PACKET_CONSUMER_TOKEN}}
 {{end -}}
 {{with $packet_env | printf "postgres-cacher-%s/creds/owner" | secret -}}
 PGDATABASE=cacher-{{$packet_env}}
-PGHOST=postgres-cacher-{{$packet_env}}.service.packet.rocks
 PGPASSWORD={{.Data.password}}
-PGPORT=5443
 PGSSLMODE=disable
 PGUSER={{.Data.username}}
+{{end -}}
+{{ range $packet_env | printf "postgres-cacher-%s" | service -}}
+PGHOST={{.Address}}
+PGPORT={{.Port}}
 {{end -}}
 {{with secret "secret/services/cacher/service/rollbar" -}}
 ROLLBAR_TOKEN="{{.Data.token}}"
