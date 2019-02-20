@@ -1,7 +1,7 @@
 {{- /* vim: set filetype=gotexttmpl: */ -}}
 {{$packet_env := env "PACKET_ENV" -}}
 {{with secret "secret/services/cacher/service/ssl" -}}
-CACHER_TLS_CERT="{{.Data.cert | toJSON}}\\n{{.Data.bundle | toJSON}}"
+CACHER_TLS_CERT={{.Data.cert | toJSON}}\n{{.Data.bundle | toJSON}}
 {{end -}}
 FACILITY={{env "NOMAD_DC"}}
 {{with $packet_env | printf "secret/services/cacher/env/%s/api" | secret -}}
