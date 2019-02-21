@@ -31,7 +31,7 @@ test:
 else
 run: ${binaries}
 	docker-compose up -d --build db
-	docker-compose up --build app
+	docker-compose up --build server
 test:
 	docker-compose up -d --build db
 	docker-compose up test
