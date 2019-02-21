@@ -6,7 +6,7 @@ CACHER_TLS_CERT={{.Data.cert | toJSON}}\n{{.Data.bundle | toJSON}}
 FACILITY={{env "NOMAD_DC"}}
 {{with $packet_env | printf "secret/services/cacher/env/%s/api" | secret -}}
 PACKET_API_AUTH_TOKEN={{.Data.PACKET_API_AUTH_TOKEN}}
-PACKET_API_URL=https://api-staging.packet.net
+{{ if .Data.PACKET_API_URL -}}PACKET_API_URL={{.Data.PACKET_API_URL}}{{end -}}
 PACKET_CONSUMER_TOKEN={{.Data.PACKET_CONSUMER_TOKEN}}
 {{end -}}
 {{with $packet_env | printf "postgres-cacher-%s/creds/owner" | secret -}}
