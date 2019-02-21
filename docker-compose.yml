@@ -41,3 +41,11 @@ services:
       interval: 1s
       timeout: 1s
       retries: 30
+  cli:
+    build:
+      context: cmd/cacherc
+    environment:
+      CACHER_CERT_URL: http://cacher.${FACILITY:-lab1}.packet.net:42112/cert
+      CACHER_GRPC_AUTHORITY: cacher.${FACILITY:-lab1}.packet.net:42111
+    links:
+      - server:cacher.${FACILITY:-lab1}.packet.net
