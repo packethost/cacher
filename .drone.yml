@@ -153,7 +153,7 @@ pipeline:
       event: push
       branch: master
 
-  verify-syd1:
+  verify-syd2:
     image: quay.io/packet/packet-nomad:v1
     commands:
       - deploy/verify_url.sh http://$SERVICE-$SITE.packet.net/_packet/healthcheck
