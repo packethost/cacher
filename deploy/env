@@ -1,0 +1,24 @@
+{{- /* vim: set filetype=gotexttmpl: */ -}}
+{{$packet_env := env "PACKET_ENV" -}}
+{{with secret "secret/services/cacher/service/ssl" -}}
+CACHER_TLS_CERT={{.Data.cert | toJSON}}\n{{.Data.bundle | toJSON}}
+{{end -}}
+FACILITY={{env "NOMAD_DC"}}
+{{with $packet_env | printf "secret/services/cacher/env/%s/api" | secret -}}
+PACKET_API_AUTH_TOKEN={{.Data.PACKET_API_AUTH_TOKEN}}
+{{ if .Data.PACKET_API_URL -}}PACKET_API_URL={{.Data.PACKET_API_URL}}{{end -}}
+PACKET_CONSUMER_TOKEN={{.Data.PACKET_CONSUMER_TOKEN}}
+{{end -}}
+{{with $packet_env | printf "postgres-cacher-%s/creds/owner" | secret -}}
+PGDATABASE=cacher-{{$packet_env}}
+PGPASSWORD={{.Data.password}}
+PGSSLMODE=disable
+PGUSER={{.Data.username}}
+{{end -}}
+{{ range $packet_env | printf "postgres-cacher-%s" | service -}}
+PGHOST={{.Address}}
+PGPORT={{.Port}}
+{{end -}}
+{{with secret "secret/services/cacher/service/rollbar" -}}
+ROLLBAR_TOKEN="{{.Data.token}}"
+{{end -}}

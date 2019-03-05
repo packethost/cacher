@@ -1,15 +1,10 @@
 ---
 version: '2.1'
 services:
-  app:
+  server:
     build: .
-    links:
-      - db:db
-    ports:
-      - 42111:42111
-      - 42112:42112
     environment:
-      FACILITY: ${FACILIT:-lab1}
+      FACILITY: ${FACILITY:-lab1}
       PACKET_API_AUTH_TOKEN: ${PACKET_API_AUTH_TOKEN}
       PACKET_API_URL: ${PACKET_API_URL:-https://lab-api.packet.net}
       PACKET_CONSUMER_TOKEN: ${PACKET_CONSUMER_TOKEN-djR2TAvbnkY92i8Ea2KFMZW6MusW1fk7qzeCUHgtnQRSsXnqxoCr6V2vhSxpqASf}
@@ -19,6 +14,7 @@ services:
       PGHOST: db
       PGPASSWORD: cacher
       PGPORT: 5432
+      PGSSLMODE: disable
       PGUSER: cacher
       ROLLBAR_TOKEN: 9b78d0ad01d1467aa92c49c3a349b79d
     labels:
@@ -45,3 +41,11 @@ services:
       interval: 1s
       timeout: 1s
       retries: 30
+  cli:
+    build:
+      context: cmd/cacherc
+    environment:
+      CACHER_CERT_URL: http://cacher.${FACILITY:-lab1}.packet.net:42112/cert
+      CACHER_GRPC_AUTHORITY: cacher.${FACILITY:-lab1}.packet.net:42111
+    links:
+      - server:cacher.${FACILITY:-lab1}.packet.net
