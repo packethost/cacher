@@ -63,6 +63,21 @@ pipeline:
         --resource_cpu 50
         --resource_mem 48
         --workers 1
+        --job-type batch
+        --batch-name migrate
+        --cmd /migrate
+        --env-file deploy/env
+      - >-
+        packet-nomad
+        --addr $NOMAD_ADDR
+        deploy
+        --env $ENV
+        --name $SERVICE
+        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
+        --site $SITE
+        --resource_cpu 50
+        --resource_mem 48
+        --workers 1
         --internal-http-service $SERVICE-$ENV.packet.net
         --internal-grpc-service $SERVICE-$ENV-grpc.packet.net
         --env-file deploy/env
@@ -91,6 +106,21 @@ pipeline:
         --resource_cpu 50
         --resource_mem 48
         --workers 1
+        --job-type batch
+        --batch-name migrate
+        --cmd /migrate
+        --env-file deploy/env
+      - >-
+        packet-nomad
+        --addr $NOMAD_ADDR
+        deploy
+        --env $ENV
+        --name $SERVICE
+        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
+        --site $SITE
+        --resource_cpu 50
+        --resource_mem 48
+        --workers 1
         --internal-http-service $SERVICE-$SITE.packet.net
         --internal-grpc-service $SERVICE-$SITE-grpc.packet.net
         --env-file deploy/env
@@ -108,6 +138,21 @@ pipeline:
   deploy-syd2:
     image: quay.io/packet/packet-nomad:v1
     commands:
+      - >-
+        packet-nomad
+        --addr $NOMAD_ADDR
+        deploy
+        --env $ENV
+        --name $SERVICE
+        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
+        --site $SITE
+        --resource_cpu 50
+        --resource_mem 48
+        --workers 1
+        --job-type batch
+        --batch-name migrate
+        --cmd /migrate
+        --env-file deploy/env
       - >-
         packet-nomad
         --addr $NOMAD_ADDR
