@@ -66,6 +66,7 @@ pipeline:
         --internal-http-service $SERVICE-$ENV.packet.net
         --internal-grpc-service $SERVICE-$ENV-grpc.packet.net
         --env-file deploy/env
+      - deploy/verify_url.sh http://$SERVICE-$ENV.packet.net/_packet/healthcheck
     secrets: [nomad_addr, quay_user, quay_password]
     environment:
       DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
@@ -74,17 +75,6 @@ pipeline:
       SITE: ewr1
     when:
       event: push
-      branch: master
-
-  verify-staging:
-    image: quay.io/packet/packet-nomad:v1
-    commands:
-      - deploy/verify_url.sh http://$SERVICE-$ENV.packet.net/_packet/healthcheck
-    environment:
-      ENV: staging
-      SERVICE: cacher
-    when:
-      event: [push, tag]
       branch: master
 
   deploy-syd1:
@@ -104,6 +94,7 @@ pipeline:
         --internal-http-service $SERVICE-$SITE.packet.net
         --internal-grpc-service $SERVICE-$SITE-grpc.packet.net
         --env-file deploy/env
+      - deploy/verify_url.sh http://$SERVICE-$SITE.packet.net/_packet/healthcheck
     secrets: [nomad_addr, quay_user, quay_password]
     environment:
       DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
@@ -112,18 +103,6 @@ pipeline:
       SITE: syd1
     when:
       event: push
-      branch: master
-
-  verify-syd1:
-    image: quay.io/packet/packet-nomad:v1
-    commands:
-      - deploy/verify_url.sh http://$SERVICE-$SITE.packet.net/_packet/healthcheck
-    environment:
-      ENV: production
-      SERVICE: cacher
-      SITE: syd1
-    when:
-      event: [push, tag]
       branch: master
 
   deploy-syd2:
@@ -143,6 +122,7 @@ pipeline:
         --internal-http-service $SERVICE-$SITE.packet.net
         --internal-grpc-service $SERVICE-$SITE-grpc.packet.net
         --env-file deploy/env
+      - deploy/verify_url.sh http://$SERVICE-$SITE.packet.net/_packet/healthcheck
     secrets: [nomad_addr, quay_user, quay_password]
     environment:
       DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
@@ -151,16 +131,4 @@ pipeline:
       SITE: syd2
     when:
       event: push
-      branch: master
-
-  verify-syd2:
-    image: quay.io/packet/packet-nomad:v1
-    commands:
-      - deploy/verify_url.sh http://$SERVICE-$SITE.packet.net/_packet/healthcheck
-    environment:
-      ENV: production
-      SERVICE: cacher
-      SITE: syd2
-    when:
-      event: [push, tag]
       branch: master
