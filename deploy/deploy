@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -eux
+
+packet-nomad deploy \
+             --image quay.io/packet/$NOMAD_DEPLOY_NAME:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA} \
+             --resource_cpu 50 \
+             --resource_mem 48 \
+             --workers 1 \
+             --job-type batch \
+             --batch-name migrate \
+             --cmd /migrate \
+             --env-file deploy/env
+
+packet-nomad deploy \
+             --image quay.io/packet/$NOMAD_DEPLOY_NAME:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA} \
+             --resource_cpu 50 \
+             --resource_mem 48 \
+             --workers 1 \
+             --internal-http-service $NOMAD_DEPLOY_NAME-$NOMAD_DEPLOY_SITE.packet.net,$NOMAD_DEPLOY_NAME.$NOMAD_DEPLOY_SITE.packet.net \
+             --internal-grpc-service $NOMAD_DEPLOY_NAME-$NOMAD_DEPLOY_SITE-grpc.packet.net,$NOMAD_DEPLOY_NAME-grpc.$NOMAD_DEPLOY_SITE.packet.net \
+             --env-file deploy/env
+
+deploy/verify_url.sh \
+    http://$NOMAD_DEPLOY_NAME-$NOMAD_DEPLOY_SITE.packet.net/_packet/healthcheck
