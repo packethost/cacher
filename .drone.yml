@@ -20,7 +20,6 @@ default_deploy: &default_deploy
 default_deploy_env: &default_deploy_env
   NOMAD_DEPLOY_ENV: production
   NOMAD_DEPLOY_NAME: cacher
-  NOMAD_DEPLOY_ENV: production
   NOMAD_DEPLOY_ENV_FILE: deploy/env
   NOMAD_DEPLOY_IMAGE: quay.io/packet/cacher:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
   NOMAD_DEPLOY_RESOURCE_CPU: "50"
