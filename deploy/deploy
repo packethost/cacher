@@ -4,28 +4,16 @@ set -eux
 
 httpsubdomain=$NOMAD_DEPLOY_NAME-$NOMAD_DEPLOY_SITE
 
-if [ x$NOMAD_DEPLOY_ENV = xstaging ] ; then
-    httpsubdomain=$NOMAD_DEPLOY_NAME-staging
-fi
+[[ $NOMAD_DEPLOY_ENV == staging ]] && httpsubdomain=$NOMAD_DEPLOY_NAME-staging
 
 packet-nomad deploy \
-             --image quay.io/packet/$NOMAD_DEPLOY_NAME:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA} \
-             --resource_cpu 50 \
-             --resource_mem 48 \
-             --workers 1 \
              --job-type batch \
              --batch-name migrate \
              --cmd /migrate \
-             --env-file deploy/env
 
 packet-nomad deploy \
-             --image quay.io/packet/$NOMAD_DEPLOY_NAME:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA} \
-             --resource_cpu 50 \
-             --resource_mem 48 \
-             --workers 1 \
              --internal-http-service $httpsubdomain.packet.net \
              --internal-grpc-service $httpsubdomain-grpc.packet.net \
-             --env-file deploy/env
 
 deploy/verify_url.sh \
     http://$httpsubdomain.packet.net/_packet/healthcheck
