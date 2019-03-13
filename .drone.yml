@@ -92,6 +92,9 @@ pipeline:
 
   deploy-bbg-lab1:
     <<: *default_deploy
+    when:
+      event: push
+      branch: [master, SWE-2596]
     environment:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: bbg-lab1
