@@ -4,6 +4,28 @@ workspace:
   base: /go
   path: src/github.com/packethost/cacher
 
+default_deploy: &default_deploy
+  group: deploy
+  image: quay.io/packet/packet-nomad:v1
+  pull: true
+  commands:
+    - deploy/deploy
+  secrets:
+    - nomad_addr
+    - quay_password
+    - quay_user
+  when:
+    event: push
+    branch: master
+default_deploy_env: &default_deploy_env
+  NOMAD_DEPLOY_ENV: production
+  NOMAD_DEPLOY_NAME: cacher
+  NOMAD_DEPLOY_ENV_FILE: deploy/env
+  NOMAD_DEPLOY_IMAGE: quay.io/packet/cacher:${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
+  NOMAD_DEPLOY_RESOURCE_CPU: "50"
+  NOMAD_DEPLOY_RESOURCE_MEM: "48"
+  NOMAD_DEPLOY_WORKERS: "1"
+
 pipeline:
   lint:
     group: ci
@@ -50,130 +72,26 @@ pipeline:
     secrets: [docker_username, docker_password]
 
   deploy-staging:
-    image: quay.io/packet/packet-nomad:v1
-    commands:
-      - >-
-        packet-nomad
-        --addr $NOMAD_ADDR
-        deploy
-        --env $ENV
-        --name $SERVICE
-        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
-        --site $SITE
-        --resource_cpu 50
-        --resource_mem 48
-        --workers 1
-        --job-type batch
-        --batch-name migrate
-        --cmd /migrate
-        --env-file deploy/env
-      - >-
-        packet-nomad
-        --addr $NOMAD_ADDR
-        deploy
-        --env $ENV
-        --name $SERVICE
-        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
-        --site $SITE
-        --resource_cpu 50
-        --resource_mem 48
-        --workers 1
-        --internal-http-service $SERVICE-$ENV.packet.net
-        --internal-grpc-service $SERVICE-$ENV-grpc.packet.net
-        --env-file deploy/env
-      - deploy/verify_url.sh http://$SERVICE-$ENV.packet.net/_packet/healthcheck
-    secrets: [nomad_addr, quay_user, quay_password]
+    <<: *default_deploy
     environment:
-      DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
-      ENV: staging
-      SERVICE: cacher
-      SITE: ewr1
-    when:
-      event: push
-      branch: master
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: ewr1
+      NOMAD_DEPLOY_ENV: staging
 
   deploy-syd1:
-    image: quay.io/packet/packet-nomad:v1
-    commands:
-      - >-
-        packet-nomad
-        --addr $NOMAD_ADDR
-        deploy
-        --env $ENV
-        --name $SERVICE
-        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
-        --site $SITE
-        --resource_cpu 50
-        --resource_mem 48
-        --workers 1
-        --job-type batch
-        --batch-name migrate
-        --cmd /migrate
-        --env-file deploy/env
-      - >-
-        packet-nomad
-        --addr $NOMAD_ADDR
-        deploy
-        --env $ENV
-        --name $SERVICE
-        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
-        --site $SITE
-        --resource_cpu 50
-        --resource_mem 48
-        --workers 1
-        --internal-http-service $SERVICE-$SITE.packet.net
-        --internal-grpc-service $SERVICE-$SITE-grpc.packet.net
-        --env-file deploy/env
-      - deploy/verify_url.sh http://$SERVICE-$SITE.packet.net/_packet/healthcheck
-    secrets: [nomad_addr, quay_user, quay_password]
+    <<: *default_deploy
     environment:
-      DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
-      ENV: production
-      SERVICE: cacher
-      SITE: syd1
-    when:
-      event: push
-      branch: master
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: syd1
 
   deploy-syd2:
-    image: quay.io/packet/packet-nomad:v1
-    commands:
-      - >-
-        packet-nomad
-        --addr $NOMAD_ADDR
-        deploy
-        --env $ENV
-        --name $SERVICE
-        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
-        --site $SITE
-        --resource_cpu 50
-        --resource_mem 48
-        --workers 1
-        --job-type batch
-        --batch-name migrate
-        --cmd /migrate
-        --env-file deploy/env
-      - >-
-        packet-nomad
-        --addr $NOMAD_ADDR
-        deploy
-        --env $ENV
-        --name $SERVICE
-        --image quay.io/packet/$SERVICE:$DEPLOY_VERSION
-        --site $SITE
-        --resource_cpu 50
-        --resource_mem 48
-        --workers 1
-        --internal-http-service $SERVICE-$SITE.packet.net
-        --internal-grpc-service $SERVICE-$SITE-grpc.packet.net
-        --env-file deploy/env
-      - deploy/verify_url.sh http://$SERVICE-$SITE.packet.net/_packet/healthcheck
-    secrets: [nomad_addr, quay_user, quay_password]
+    <<: *default_deploy
     environment:
-      DEPLOY_VERSION: ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
-      ENV: production
-      SERVICE: cacher
-      SITE: syd2
-    when:
-      event: push
-      branch: master
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: syd2
+
+  deploy-bbg-lab1:
+    <<: *default_deploy
+    environment:
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: bbg-lab1

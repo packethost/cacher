@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -eux
+
+httpsubdomain=$NOMAD_DEPLOY_NAME-$NOMAD_DEPLOY_SITE
+
+[[ $NOMAD_DEPLOY_ENV == staging ]] && httpsubdomain=$NOMAD_DEPLOY_NAME-staging
+
+packet-nomad deploy \
+             --job-type batch \
+             --batch-name migrate \
+             --cmd /migrate \
+
+packet-nomad deploy \
+             --internal-http-service $httpsubdomain.packet.net \
+             --internal-grpc-service $httpsubdomain-grpc.packet.net \
+
+deploy/verify_url.sh \
+    http://$httpsubdomain.packet.net/_packet/healthcheck

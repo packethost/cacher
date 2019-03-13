@@ -1,9 +1,10 @@
 {{- /* vim: set filetype=gotexttmpl: */ -}}
 {{$packet_env := env "PACKET_ENV" -}}
+{{$nomad_dc := env "NOMAD_DC" -}}
 {{with secret "secret/services/cacher/service/ssl" -}}
 CACHER_TLS_CERT={{.Data.cert | toJSON}}\n{{.Data.bundle | toJSON}}
 {{end -}}
-FACILITY={{env "NOMAD_DC"}}
+FACILITY={{$nomad_dc}}
 {{with $packet_env | printf "secret/services/cacher/env/%s/api" | secret -}}
 PACKET_API_AUTH_TOKEN={{.Data.PACKET_API_AUTH_TOKEN}}
 {{ if .Data.PACKET_API_URL -}}PACKET_API_URL={{.Data.PACKET_API_URL}}{{end -}}
