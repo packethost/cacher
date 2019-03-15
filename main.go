@@ -119,7 +119,7 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) ([]byte, time.Time) {
+func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) *server {
 	var (
 		certPEM []byte
 		modT    time.Time
@@ -213,7 +213,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		s.GracefulStop()
 	}()
 
-	return certPEM, modT
+	return server
 }
 
 func versionHandler(w http.ResponseWriter, r *http.Request) {
@@ -314,8 +314,8 @@ func main() {
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	certPEM, modT := setupGRPC(ctx, client, db, facility, errCh)
-	setupHTTP(ctx, certPEM, modT, errCh)
+	server := setupGRPC(ctx, client, db, facility, errCh)
+	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
