@@ -181,8 +181,9 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 	}
 
 	s := grpc.NewServer(params...)
-
-	cacher.RegisterCacherServer(s, &server{
+	server := &server{
+		cert:   certPEM,
+		modT:   modT,
 		packet: client,
 		db:     db,
 		quit:   ctx.Done(),
@@ -190,7 +191,9 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		ingest: func() {
 			ingestFacility(ctx, client, db, api, facility)
 		},
-	})
+	}
+
+	cacher.RegisterCacherServer(s, server)
 	grpc_prometheus.Register(s)
 
 	go func() {

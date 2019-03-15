@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
@@ -15,6 +16,9 @@ import (
 )
 
 type server struct {
+	cert []byte
+	modT time.Time
+
 	packet *packngo.Client
 	db     *sql.DB
 	quit   <-chan struct{}
@@ -276,4 +280,14 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 			}
 		}
 	}
+}
+
+// Cert returns the public cert that can be served to clients
+func (s *server) Cert() []byte {
+	return s.cert
+}
+
+// ModTime returns the modified-time of the grpc cert
+func (s *server) ModTime() time.Time {
+	return s.modT
 }
