@@ -173,13 +173,13 @@ func (s *server) ingestFacility(ctx context.Context, api, facility string) {
 		}
 		timer.ObserveDuration()
 		logger.Info("done copying")
-		break
+
+		return
 	}
-	if errCount >= getMaxErrs() {
-		err := errors.New("maximum fetch/copy errors reached")
-		logger.Error(err)
-		panic(err)
-	}
+
+	err := errors.New("maximum fetch/copy errors reached")
+	logger.Error(err)
+	panic(err)
 }
 
 // Ingest implements cacher.CacherServer
