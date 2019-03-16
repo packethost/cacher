@@ -124,6 +124,59 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
+func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api, facility string) {
+	label := prometheus.Labels{}
+	var errCount int
+	for errCount = 0; errCount < getMaxErrs(); errCount++ {
+		logger.Info("starting fetch")
+		label["op"] = "fetch"
+		ingestCount.With(label).Inc()
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
+		data, err := fetchFacility(ctx, client, api, facility)
+		if err != nil {
+			ingestErrors.With(label).Inc()
+			logger.With("error", err).Info()
+
+			if ctx.Err() == context.Canceled {
+				return
+			}
+
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		timer.ObserveDuration()
+		logger.Info("done fetching")
+
+		logger.Info("copying")
+		label["op"] = "copy"
+		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
+		if err = copyin(ctx, db, data); err != nil {
+			ingestErrors.With(label).Inc()
+
+			l := logger.With("error", err)
+			if pqErr := pqError(err); pqErr != nil {
+				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
+			}
+			l.Info()
+
+			if ctx.Err() == context.Canceled {
+				return
+			}
+
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		timer.ObserveDuration()
+		logger.Info("done copying")
+		break
+	}
+	if errCount >= getMaxErrs() {
+		err := errors.New("maximum fetch/copy errors reached")
+		logger.Error(err)
+		panic(err)
+	}
+}
+
 // Ingest implements cacher.CacherServer
 func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
 	logger.Info("ingest")

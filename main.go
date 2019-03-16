@@ -22,7 +22,6 @@ import (
 	"github.com/packethost/packngo"
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -49,59 +48,6 @@ func getMaxErrs() int {
 		panic("unable to convert CACHER_MAX_ERRS to int")
 	}
 	return max
-}
-
-func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api, facility string) {
-	label := prometheus.Labels{}
-	var errCount int
-	for errCount = 0; errCount < getMaxErrs(); errCount++ {
-		logger.Info("starting fetch")
-		label["op"] = "fetch"
-		ingestCount.With(label).Inc()
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		data, err := fetchFacility(ctx, client, api, facility)
-		if err != nil {
-			ingestErrors.With(label).Inc()
-			logger.With("error", err).Info()
-
-			if ctx.Err() == context.Canceled {
-				return
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		timer.ObserveDuration()
-		logger.Info("done fetching")
-
-		logger.Info("copying")
-		label["op"] = "copy"
-		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		if err = copyin(ctx, db, data); err != nil {
-			ingestErrors.With(label).Inc()
-
-			l := logger.With("error", err)
-			if pqErr := pqError(err); pqErr != nil {
-				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
-			}
-			l.Info()
-
-			if ctx.Err() == context.Canceled {
-				return
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		timer.ObserveDuration()
-		logger.Info("done copying")
-		break
-	}
-	if errCount >= getMaxErrs() {
-		err := errors.New("maximum fetch/copy errors reached")
-		logger.Error(err)
-		panic(err)
-	}
 }
 
 func connectDB() *sql.DB {
