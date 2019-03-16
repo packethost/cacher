@@ -23,7 +23,6 @@ type server struct {
 	db     *sql.DB
 	quit   <-chan struct{}
 
-	once   sync.Once
 	ingest func() error
 
 	dbLock  sync.RWMutex
@@ -44,18 +43,6 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 
 	// must be a copy so deferred cacheInFlight.Dec matches the Inc
 	labels = prometheus.Labels{"method": "Push", "op": ""}
-
-	s.once.Do(func() {
-		logger.Info("ingestion goroutine is starting")
-		// in a goroutine to not block Push and possibly timeout
-		go func() {
-			if err := s.ingest(); err != nil {
-				logger.Error(err)
-				panic(err)
-			}
-		}()
-		logger.Info("ingestion goroutine is started")
-	})
 
 	var h struct {
 		ID    string
@@ -190,12 +177,7 @@ func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, e
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	s.once.Do(func() {
-		if err := s.ingest(); err != nil {
-			logger.Error(err)
-			panic(err)
-		}
-	})
+	logger.Info("Ingest called but is deprecated")
 
 	return &cacher.Empty{}, nil
 }

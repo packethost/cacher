@@ -263,6 +263,11 @@ func main() {
 	server := setupGRPC(ctx, client, db, facility, errCh)
 	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
 
+	if err := server.ingest(); err != nil {
+		logger.Error(err)
+		panic(err)
+	}
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	select {
