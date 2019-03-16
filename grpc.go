@@ -23,8 +23,6 @@ type server struct {
 	db     *sql.DB
 	quit   <-chan struct{}
 
-	ingest func() error
-
 	dbLock  sync.RWMutex
 	dbReady bool
 
@@ -109,7 +107,7 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
-func (s *server) ingestFacility(ctx context.Context, api, facility string) error {
+func (s *server) ingest(ctx context.Context, api, facility string) error {
 	logger.Info("ingestion is starting")
 	defer logger.Info("ingestion is done")
 

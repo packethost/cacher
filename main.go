@@ -135,9 +135,6 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		quit:   ctx.Done(),
 		watch:  map[string]chan string{},
 	}
-	server.ingest = func() error {
-		return server.ingestFacility(ctx, api, facility)
-	}
 
 	cacher.RegisterCacherServer(s, server)
 	grpc_prometheus.Register(s)
@@ -263,7 +260,7 @@ func main() {
 	server := setupGRPC(ctx, client, db, facility, errCh)
 	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
 
-	if err := server.ingest(); err != nil {
+	if err := server.ingest(ctx, api, facility); err != nil {
 		logger.Error(err)
 		panic(err)
 	}
