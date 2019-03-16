@@ -24,7 +24,7 @@ type server struct {
 	quit   <-chan struct{}
 
 	once   sync.Once
-	ingest func()
+	ingest func() error
 
 	dbLock  sync.RWMutex
 	dbReady bool
@@ -50,7 +50,10 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		// in a goroutine to not block Push and possibly timeout
 		go func() {
 			logger.Info("ingestion is starting")
-			s.ingest()
+			if err := s.ingest(); err != nil {
+				logger.Error(err)
+				panic(err)
+			}
 			s.dbLock.Lock()
 			s.dbReady = true
 			s.dbLock.Unlock()
@@ -189,7 +192,10 @@ func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, e
 
 	s.once.Do(func() {
 		logger.Info("ingestion is starting")
-		s.ingest()
+		if err := s.ingest(); err != nil {
+			logger.Error(err)
+			panic(err)
+		}
 		s.dbLock.Lock()
 		s.dbReady = true
 		s.dbLock.Unlock()

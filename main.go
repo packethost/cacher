@@ -135,11 +135,8 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		quit:   ctx.Done(),
 		watch:  map[string]chan string{},
 	}
-	server.ingest = func() {
-		if err := server.ingestFacility(ctx, api, facility); err != nil {
-			logger.Error(err)
-			panic(err)
-		}
+	server.ingest = func() error {
+		return server.ingestFacility(ctx, api, facility)
 	}
 
 	cacher.RegisterCacherServer(s, server)
