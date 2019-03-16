@@ -125,7 +125,11 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 }
 
 func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api, facility string) {
-	label := prometheus.Labels{}
+	logger.Info("ingest")
+	label := prometheus.Labels{"method": "Ingest", "op": ""}
+	cacheInFlight.With(label).Inc()
+	defer cacheInFlight.With(label).Dec()
+
 	var errCount int
 	for errCount = 0; errCount < getMaxErrs(); errCount++ {
 		logger.Info("starting fetch")
@@ -149,6 +153,7 @@ func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api
 
 		logger.Info("copying")
 		label["op"] = "copy"
+		ingestCount.With(label).Inc()
 		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		if err = copyin(ctx, db, data); err != nil {
 			ingestErrors.With(label).Inc()

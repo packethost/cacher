@@ -57,6 +57,7 @@ func setupMetrics(facility string) {
 
 	labels = []prometheus.Labels{
 		{"method": "Push", "op": ""},
+		{"method": "Ingest", "op": ""},
 	}
 	initCounterLabels(cacheErrors, labels)
 	initGaugeLabels(cacheInFlight, labels)
@@ -88,16 +89,20 @@ func setupMetrics(facility string) {
 	ingestCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ingest_op_count_total",
 		Help: "Number of attempts made to ingest facility data.",
-	}, []string{"service", "facility", "op"}).MustCurryWith(curryLabels)
+	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
 	ingestDuration = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ingest_op_duration_seconds",
 		Help: "Duration of successful ingestion actions while attempting to ingest facility data.",
-	}, []string{"service", "facility", "op"}).MustCurryWith(curryLabels)
+	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
 	ingestErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ingest_error_count_total",
 		Help: "Number of errors occurred attempting to ingest facility data.",
-	}, []string{"service", "facility", "op"}).MustCurryWith(curryLabels)
-	labels = []prometheus.Labels{{"op": "fetch"}, {"op": "copy"}}
+	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	labels = []prometheus.Labels{
+		{"method": "Ingest", "op": ""},
+		{"method": "Ingest", "op": "fetch"},
+		{"method": "Ingest", "op": "copy"},
+	}
 	initCounterLabels(ingestCount, labels)
 	initGaugeLabels(ingestDuration, labels)
 	initCounterLabels(ingestErrors, labels)
