@@ -124,7 +124,7 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
-func (s *server) ingestFacility(ctx context.Context, api, facility string) {
+func (s *server) ingestFacility(ctx context.Context, api, facility string) error {
 	logger.Info("ingest")
 	label := prometheus.Labels{"method": "Ingest", "op": ""}
 	cacheInFlight.With(label).Inc()
@@ -142,7 +142,7 @@ func (s *server) ingestFacility(ctx context.Context, api, facility string) {
 			logger.With("error", err).Info()
 
 			if ctx.Err() == context.Canceled {
-				return
+				return nil
 			}
 
 			time.Sleep(5 * time.Second)
@@ -165,7 +165,7 @@ func (s *server) ingestFacility(ctx context.Context, api, facility string) {
 			l.Info()
 
 			if ctx.Err() == context.Canceled {
-				return
+				return nil
 			}
 
 			time.Sleep(5 * time.Second)
@@ -174,12 +174,10 @@ func (s *server) ingestFacility(ctx context.Context, api, facility string) {
 		timer.ObserveDuration()
 		logger.Info("done copying")
 
-		return
+		return nil
 	}
 
-	err := errors.New("maximum fetch/copy errors reached")
-	logger.Error(err)
-	panic(err)
+	return errors.New("maximum fetch/copy errors reached")
 }
 
 // Ingest implements cacher.CacherServer
