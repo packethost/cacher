@@ -49,15 +49,10 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 		logger.Info("ingestion goroutine is starting")
 		// in a goroutine to not block Push and possibly timeout
 		go func() {
-			logger.Info("ingestion is starting")
 			if err := s.ingest(); err != nil {
 				logger.Error(err)
 				panic(err)
 			}
-			s.dbLock.Lock()
-			s.dbReady = true
-			s.dbLock.Unlock()
-			logger.Info("ingestion is done")
 		}()
 		logger.Info("ingestion goroutine is started")
 	})
@@ -128,7 +123,9 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 }
 
 func (s *server) ingestFacility(ctx context.Context, api, facility string) error {
-	logger.Info("ingest")
+	logger.Info("ingestion is starting")
+	defer logger.Info("ingestion is done")
+
 	label := prometheus.Labels{"method": "Ingest", "op": ""}
 	cacheInFlight.With(label).Inc()
 	defer cacheInFlight.With(label).Dec()
@@ -177,6 +174,9 @@ func (s *server) ingestFacility(ctx context.Context, api, facility string) error
 		timer.ObserveDuration()
 		logger.Info("done copying")
 
+		s.dbLock.Lock()
+		s.dbReady = true
+		s.dbLock.Unlock()
 		return nil
 	}
 
@@ -191,15 +191,10 @@ func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, e
 	defer cacheInFlight.With(labels).Dec()
 
 	s.once.Do(func() {
-		logger.Info("ingestion is starting")
 		if err := s.ingest(); err != nil {
 			logger.Error(err)
 			panic(err)
 		}
-		s.dbLock.Lock()
-		s.dbReady = true
-		s.dbLock.Unlock()
-		logger.Info("ingestion is done")
 	})
 
 	return &cacher.Empty{}, nil
