@@ -1,4 +1,4 @@
-// package log sets up a shared logger that can be used by all packages run under one binary.
+// Package log sets up a shared logger that can be used by all packages run under one binary.
 //
 // This package wraps zap very lightly so zap best practices apply here too, namely use `With` for KV pairs to add context to a line.
 // The lack of a wide gamut of logging levels is by design.
@@ -15,9 +15,11 @@ package log
 import (
 	"os"
 
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"github.com/packethost/pkg/log/internal/rollbar"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -39,7 +41,7 @@ func configureLogger(l *zap.Logger, service string) (Logger, func(), error) {
 		l.Sync()
 	}
 
-	return Logger{s: l.Sugar()}, cleanup, nil
+	return Logger{s: l.Sugar()}.AddCallerSkip(1), cleanup, nil
 }
 
 // Init initializes the logging system and sets the "service" key to the provided argument.
@@ -100,8 +102,21 @@ func (l Logger) With(args ...interface{}) Logger {
 	return Logger{s: l.s.With(args...)}
 }
 
+// AddCallerSkip increases the number of callers skipped by caller annotation.
+// When building wrappers around the Logger, supplying this option prevents Logger from always reporting the wrapper code as the caller.
+func (l Logger) AddCallerSkip(skip int) Logger {
+	s := l.s.Desugar().WithOptions(zap.AddCallerSkip(skip)).Sugar()
+	return Logger{s}
+}
+
 // Package returns a copy of the logger with the "pkg" set to the argument.
 // It should be called before the original Logger has had any keys set to values, otherwise confusion may ensue.
 func (l Logger) Package(pkg string) Logger {
 	return Logger{s: l.s.With("pkg", pkg)}
+}
+
+// GRPCLoggers returns server side logging middleware for gRPC servers
+func (l Logger) GRPCLoggers() (grpc.StreamServerInterceptor, grpc.UnaryServerInterceptor) {
+	logger := l.s.Desugar()
+	return grpc_zap.StreamServerInterceptor(logger), grpc_zap.UnaryServerInterceptor(logger)
 }
