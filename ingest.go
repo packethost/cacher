@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -13,36 +12,47 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+func fetchFacilityPage(ctx context.Context, client *packngo.Client, url string) ([]map[string]interface{}, uint, uint, error) {
+	req, err := client.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, 0, 0, errors.Wrap(err, "failed to create fetch request")
+	}
+	req = req.WithContext(ctx)
+	req.Header.Add("X-Packet-Staff", "true")
+
+	r := struct {
+		Meta struct {
+			CurrentPage int `json:"current_page"`
+			LastPage    int `json:"last_page"`
+			Total       int `json:"total"`
+		}
+		Hardware []map[string]interface{}
+	}{}
+	_, err = client.Do(req, &r)
+	if err != nil {
+		return nil, 0, 0, errors.Wrap(err, "failed to fetch page")
+	}
+
+	return r.Hardware, uint(r.Meta.LastPage), uint(r.Meta.Total), nil
+}
+
 func fetchFacility(ctx context.Context, client *packngo.Client, api, facility string) ([]map[string]interface{}, error) {
 	var j []map[string]interface{}
-	for page, lastPage := 1, 1; page <= lastPage; page++ {
-		req, err := client.NewRequest("GET", api+"staff/cacher/hardware?facility="+facility+"&sort_by=created_at&sort_direction=asc&per_page=50&page="+strconv.Itoa(page), nil)
+	base := api + "staff/cacher/hardware?facility=" + facility + "&sort_by=created_at&sort_direction=asc&per_page=50&page="
+	for page, lastPage := uint(1), uint(1); page <= lastPage; page++ {
+		url := base + strconv.Itoa(int(page))
+		hw, last, total, err := fetchFacilityPage(ctx, client, url)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("NewRequest page=%d", page))
+			return nil, errors.Wrapf(err, "failed to fetch page %d of %d", page, lastPage)
 		}
-		req = req.WithContext(ctx)
-		req.Header.Add("X-Packet-Staff", "true")
-
-		r := struct {
-			Meta struct {
-				CurrentPage int `json:"current_page"`
-				LastPage    int `json:"last_page"`
-				Total       int `json:"total"`
-			}
-			Hardware []map[string]interface{}
-		}{}
-		_, err = client.Do(req, &r)
-		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("packngo: page=%d", page))
-		}
+		lastPage = last
 
 		if j == nil {
-			j = make([]map[string]interface{}, 0, r.Meta.Total)
+			j = make([]map[string]interface{}, 0, total)
 		}
 
-		j = append(j, r.Hardware...)
-		lastPage = r.Meta.LastPage
-		logger.With("have", len(j), "want", r.Meta.Total).Info("fetched a page")
+		j = append(j, hw...)
+		logger.With("have", len(j), "want", total).Info("fetched a page")
 	}
 	return j, nil
 }
