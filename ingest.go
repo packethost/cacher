@@ -37,6 +37,11 @@ func fetchFacilityPage(ctx context.Context, client *packngo.Client, url string) 
 }
 
 func fetchFacility(ctx context.Context, client *packngo.Client, api, facility string) ([]map[string]interface{}, error) {
+	logger.Info("fetch start")
+	labels := prometheus.Labels{"method": "Ingest", "op": "fetch"}
+	ingestCount.With(labels).Inc()
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(labels).Set))
+
 	var j []map[string]interface{}
 	base := api + "staff/cacher/hardware?facility=" + facility + "&sort_by=created_at&sort_direction=asc&per_page=50&page="
 	for page, lastPage := uint(1), uint(1); page <= lastPage; page++ {
@@ -54,10 +59,19 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api, facility st
 		j = append(j, hw...)
 		logger.With("have", len(j), "want", total).Info("fetched a page")
 	}
+
+	timer.ObserveDuration()
+	logger.Info("fetch done")
+
 	return j, nil
 }
 
 func copyin(ctx context.Context, db *sql.DB, data []map[string]interface{}) error {
+	logger.Info("copy start")
+	labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
+	ingestCount.With(labels).Inc()
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(labels).Set))
+
 	now := time.Now()
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
@@ -122,6 +136,9 @@ func copyin(ctx context.Context, db *sql.DB, data []map[string]interface{}) erro
 		return errors.Wrap(err, "VACCUM FULL ANALYZE")
 	}
 
+	timer.ObserveDuration()
+	logger.Info("copy done")
+
 	return nil
 }
 
@@ -129,19 +146,16 @@ func (s *server) ingest(ctx context.Context, api, facility string) error {
 	logger.Info("ingestion is starting")
 	defer logger.Info("ingestion is done")
 
-	label := prometheus.Labels{"method": "Ingest", "op": ""}
-	cacheInFlight.With(label).Inc()
-	defer cacheInFlight.With(label).Dec()
+	labels := prometheus.Labels{"method": "Ingest", "op": ""}
+	cacheInFlight.With(labels).Inc()
+	defer cacheInFlight.With(labels).Dec()
 
 	var errCount int
 	for errCount = 0; errCount < getMaxErrs(); errCount++ {
-		logger.Info("starting fetch")
-		label["op"] = "fetch"
-		ingestCount.With(label).Inc()
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		data, err := fetchFacility(ctx, s.packet, api, facility)
 		if err != nil {
-			ingestErrors.With(label).Inc()
+			labels = prometheus.Labels{"method": "Ingest", "op": "fetch"}
+			ingestErrors.With(labels).Inc()
 			logger.With("error", err).Info()
 
 			if ctx.Err() == context.Canceled {
@@ -151,15 +165,10 @@ func (s *server) ingest(ctx context.Context, api, facility string) error {
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		timer.ObserveDuration()
-		logger.Info("done fetching")
 
-		logger.Info("copying")
-		label["op"] = "copy"
-		ingestCount.With(label).Inc()
-		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
 		if err = copyin(ctx, s.db, data); err != nil {
-			ingestErrors.With(label).Inc()
+			labels = prometheus.Labels{"method": "Ingest", "op": "copy"}
+			ingestErrors.With(labels).Inc()
 
 			l := logger.With("error", err)
 			if pqErr := pqError(err); pqErr != nil {
@@ -174,8 +183,6 @@ func (s *server) ingest(ctx context.Context, api, facility string) error {
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		timer.ObserveDuration()
-		logger.Info("done copying")
 
 		s.dbLock.Lock()
 		s.dbReady = true
