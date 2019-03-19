@@ -3,7 +3,7 @@ cli := cmd/cacherc/cacherc-linux-x86_64
 binaries := ${server} ${cli}
 all: ${binaries}
 
-.PHONY: server cli gen test
+.PHONY: server ${binaries} cli gen test
 server: ${server}
 cli: ${cli}
 
