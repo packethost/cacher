@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
@@ -15,12 +16,12 @@ import (
 )
 
 type server struct {
+	cert []byte
+	modT time.Time
+
 	packet *packngo.Client
 	db     *sql.DB
 	quit   <-chan struct{}
-
-	once   sync.Once
-	ingest func()
 
 	dbLock  sync.RWMutex
 	dbReady bool
@@ -40,20 +41,6 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 
 	// must be a copy so deferred cacheInFlight.Dec matches the Inc
 	labels = prometheus.Labels{"method": "Push", "op": ""}
-
-	s.once.Do(func() {
-		logger.Info("ingestion goroutine is starting")
-		// in a goroutine to not block Push and possibly timeout
-		go func() {
-			logger.Info("ingestion is starting")
-			s.ingest()
-			s.dbLock.Lock()
-			s.dbReady = true
-			s.dbLock.Unlock()
-			logger.Info("ingestion is done")
-		}()
-		logger.Info("ingestion goroutine is started")
-	})
 
 	var h struct {
 		ID    string
@@ -120,6 +107,67 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
+func (s *server) ingest(ctx context.Context, api, facility string) error {
+	logger.Info("ingestion is starting")
+	defer logger.Info("ingestion is done")
+
+	label := prometheus.Labels{"method": "Ingest", "op": ""}
+	cacheInFlight.With(label).Inc()
+	defer cacheInFlight.With(label).Dec()
+
+	var errCount int
+	for errCount = 0; errCount < getMaxErrs(); errCount++ {
+		logger.Info("starting fetch")
+		label["op"] = "fetch"
+		ingestCount.With(label).Inc()
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
+		data, err := fetchFacility(ctx, s.packet, api, facility)
+		if err != nil {
+			ingestErrors.With(label).Inc()
+			logger.With("error", err).Info()
+
+			if ctx.Err() == context.Canceled {
+				return nil
+			}
+
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		timer.ObserveDuration()
+		logger.Info("done fetching")
+
+		logger.Info("copying")
+		label["op"] = "copy"
+		ingestCount.With(label).Inc()
+		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
+		if err = copyin(ctx, s.db, data); err != nil {
+			ingestErrors.With(label).Inc()
+
+			l := logger.With("error", err)
+			if pqErr := pqError(err); pqErr != nil {
+				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
+			}
+			l.Info()
+
+			if ctx.Err() == context.Canceled {
+				return nil
+			}
+
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		timer.ObserveDuration()
+		logger.Info("done copying")
+
+		s.dbLock.Lock()
+		s.dbReady = true
+		s.dbLock.Unlock()
+		return nil
+	}
+
+	return errors.New("maximum fetch/copy errors reached")
+}
+
 // Ingest implements cacher.CacherServer
 func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
 	logger.Info("ingest")
@@ -127,14 +175,7 @@ func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, e
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	s.once.Do(func() {
-		logger.Info("ingestion is starting")
-		s.ingest()
-		s.dbLock.Lock()
-		s.dbReady = true
-		s.dbLock.Unlock()
-		logger.Info("ingestion is done")
-	})
+	logger.Info("Ingest called but is deprecated")
 
 	return &cacher.Empty{}, nil
 }
@@ -276,4 +317,14 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 			}
 		}
 	}
+}
+
+// Cert returns the public cert that can be served to clients
+func (s *server) Cert() []byte {
+	return s.cert
+}
+
+// ModTime returns the modified-time of the grpc cert
+func (s *server) ModTime() time.Time {
+	return s.modT
 }

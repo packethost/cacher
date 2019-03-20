@@ -22,7 +22,6 @@ import (
 	"github.com/packethost/packngo"
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -51,59 +50,6 @@ func getMaxErrs() int {
 	return max
 }
 
-func ingestFacility(ctx context.Context, client *packngo.Client, db *sql.DB, api, facility string) {
-	label := prometheus.Labels{}
-	var errCount int
-	for errCount = 0; errCount < getMaxErrs(); errCount++ {
-		logger.Info("starting fetch")
-		label["op"] = "fetch"
-		ingestCount.With(label).Inc()
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		data, err := fetchFacility(ctx, client, api, facility)
-		if err != nil {
-			ingestErrors.With(label).Inc()
-			logger.With("error", err).Info()
-
-			if ctx.Err() == context.Canceled {
-				return
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		timer.ObserveDuration()
-		logger.Info("done fetching")
-
-		logger.Info("copying")
-		label["op"] = "copy"
-		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		if err = copyin(ctx, db, data); err != nil {
-			ingestErrors.With(label).Inc()
-
-			l := logger.With("error", err)
-			if pqErr := pqError(err); pqErr != nil {
-				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
-			}
-			l.Info()
-
-			if ctx.Err() == context.Canceled {
-				return
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		timer.ObserveDuration()
-		logger.Info("done copying")
-		break
-	}
-	if errCount >= getMaxErrs() {
-		err := errors.New("maximum fetch/copy errors reached")
-		logger.Error(err)
-		panic(err)
-	}
-}
-
 func connectDB() *sql.DB {
 	db, err := sql.Open("postgres", "")
 	if err != nil {
@@ -119,7 +65,7 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) ([]byte, time.Time) {
+func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) *server {
 	var (
 		certPEM []byte
 		modT    time.Time
@@ -181,16 +127,16 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 	}
 
 	s := grpc.NewServer(params...)
-
-	cacher.RegisterCacherServer(s, &server{
+	server := &server{
+		cert:   certPEM,
+		modT:   modT,
 		packet: client,
 		db:     db,
 		quit:   ctx.Done(),
 		watch:  map[string]chan string{},
-		ingest: func() {
-			ingestFacility(ctx, client, db, api, facility)
-		},
-	})
+	}
+
+	cacher.RegisterCacherServer(s, server)
 	grpc_prometheus.Register(s)
 
 	go func() {
@@ -210,7 +156,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		s.GracefulStop()
 	}()
 
-	return certPEM, modT
+	return server
 }
 
 func versionHandler(w http.ResponseWriter, r *http.Request) {
@@ -311,8 +257,13 @@ func main() {
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	certPEM, modT := setupGRPC(ctx, client, db, facility, errCh)
-	setupHTTP(ctx, certPEM, modT, errCh)
+	server := setupGRPC(ctx, client, db, facility, errCh)
+	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
+
+	if err := server.ingest(ctx, api, facility); err != nil {
+		logger.Error(err)
+		panic(err)
+	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)

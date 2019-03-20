@@ -18,9 +18,11 @@
   version = "v1.4.7"
 
 [[projects]]
-  digest = "1:583595482c6dfc7540c8761d1f00981843eb6dd7da332cae3f28b8651bae8436"
+  branch = "master"
+  digest = "1:783166cf562b70e3f369c421ce110f23d294546e7a8ef83aa63586996990ef9b"
   name = "github.com/golang/protobuf"
   packages = [
+    "jsonpb",
     "proto",
     "protoc-gen-go",
     "protoc-gen-go/descriptor",
@@ -31,11 +33,26 @@
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
+    "ptypes/struct",
     "ptypes/timestamp",
   ]
   pruneopts = "UT"
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "d3c38a4eb4970272b87a425ae00ccc4548e2f9bb"
+
+[[projects]]
+  digest = "1:6d9ec638c0f60d01a25e43940f20dff30cf8b468371ea4df54cbc5b73e07e223"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    ".",
+    "logging",
+    "logging/zap",
+    "logging/zap/ctxzap",
+    "tags",
+    "tags/zap",
+  ]
+  pruneopts = "UT"
+  revision = "c250d6563d4d4c20252cd865923440e829844f4e"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:18d7ca9d0ea92fbf087e15cfd90b2c3fb391e9a46181fd421f99c48c8885bab7"
@@ -125,14 +142,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3acc9e7da93e17f2ad7d280b175f1f4e3783e22be39ecf9bc5c93d9239c45a1e"
+  digest = "1:a10a63e26268f6c21032efc83bc65d30b29310ab732237289372b532fd197be8"
   name = "github.com/packethost/pkg"
   packages = [
     "log",
     "log/internal/rollbar",
   ]
   pruneopts = "UT"
-  revision = "2e384261c92a3caaf7fed1ab55606dddddcb94ca"
+  revision = "1400bd87cdf28e4b8a7ec622d9d2ff570bf636e7"
 
 [[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
