@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strconv"
-	"time"
 
 	"github.com/packethost/packngo"
 	"github.com/pkg/errors"
@@ -150,45 +149,37 @@ func (s *server) ingest(ctx context.Context, api, facility string) error {
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	var errCount int
-	for errCount = 0; errCount < getMaxErrs(); errCount++ {
-		data, err := fetchFacility(ctx, s.packet, api, facility)
-		if err != nil {
-			labels = prometheus.Labels{"method": "Ingest", "op": "fetch"}
-			ingestErrors.With(labels).Inc()
-			logger.With("error", err).Info()
+	data, err := fetchFacility(ctx, s.packet, api, facility)
+	if err != nil {
+		labels = prometheus.Labels{"method": "Ingest", "op": "fetch"}
+		ingestErrors.With(labels).Inc()
+		logger.With("error", err).Info()
 
-			if ctx.Err() == context.Canceled {
-				return nil
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
+		if ctx.Err() == context.Canceled {
+			return nil
 		}
-
-		if err = copyin(ctx, s.db, data); err != nil {
-			labels = prometheus.Labels{"method": "Ingest", "op": "copy"}
-			ingestErrors.With(labels).Inc()
-
-			l := logger.With("error", err)
-			if pqErr := pqError(err); pqErr != nil {
-				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
-			}
-			l.Info()
-
-			if ctx.Err() == context.Canceled {
-				return nil
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		s.dbLock.Lock()
-		s.dbReady = true
-		s.dbLock.Unlock()
-		return nil
+		return err
 	}
 
-	return errors.New("maximum fetch/copy errors reached")
+	if err = copyin(ctx, s.db, data); err != nil {
+		labels = prometheus.Labels{"method": "Ingest", "op": "copy"}
+		ingestErrors.With(labels).Inc()
+
+		l := logger.With("error", err)
+		if pqErr := pqError(err); pqErr != nil {
+			l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
+		}
+		l.Info()
+
+		if ctx.Err() == context.Canceled {
+			return nil
+		}
+
+		return err
+	}
+
+	s.dbLock.Lock()
+	s.dbReady = true
+	s.dbLock.Unlock()
+	return nil
 }
