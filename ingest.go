@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/packethost/packngo"
@@ -158,37 +159,62 @@ func (s *server) ingest(ctx context.Context, api, facility string) error {
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	ch := make(chan []map[string]interface{}, 200)
-	if err := fetchFacility(ctx, s.packet, api, facility, ch); err != nil {
-		labels = prometheus.Labels{"method": "Ingest", "op": "fetch"}
-		ingestErrors.With(labels).Inc()
-		logger.With("error", err).Info()
+	ctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-		if ctx.Err() == context.Canceled {
-			return nil
+	ch := make(chan []map[string]interface{}, 1)
+	errCh := make(chan error)
+	go func() {
+		defer wg.Done()
+
+		if err := fetchFacility(ctx, s.packet, api, facility, ch); err != nil {
+			labels := prometheus.Labels{"method": "Ingest", "op": "fetch"}
+			ingestErrors.With(labels).Inc()
+			logger.With("error", err).Info()
+
+			if ctx.Err() == context.Canceled {
+				return
+			}
+
+			cancel()
+			errCh <- err
 		}
+	}()
+	go func() {
+		defer wg.Done()
+
+		if err := copyin(ctx, s.db, ch); err != nil {
+			labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
+			ingestErrors.With(labels).Inc()
+
+			l := logger.With("error", err)
+			if pqErr := pqError(err); pqErr != nil {
+				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
+			}
+			l.Info()
+
+			if ctx.Err() == context.Canceled {
+				return
+			}
+
+			cancel()
+			errCh <- err
+		}
+	}()
+
+	wg.Wait()
+	cancel()
+
+	select {
+	case err := <-errCh:
 		return err
-	}
-
-	if err := copyin(ctx, s.db, ch); err != nil {
-		labels = prometheus.Labels{"method": "Ingest", "op": "copy"}
-		ingestErrors.With(labels).Inc()
-
-		l := logger.With("error", err)
-		if pqErr := pqError(err); pqErr != nil {
-			l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
-		}
-		l.Info()
-
-		if ctx.Err() == context.Canceled {
-			return nil
-		}
-
-		return err
+	default:
 	}
 
 	s.dbLock.Lock()
 	s.dbReady = true
 	s.dbLock.Unlock()
+
 	return nil
 }
