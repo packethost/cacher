@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/packethost/packngo"
 	"github.com/pkg/errors"
@@ -35,37 +36,45 @@ func fetchFacilityPage(ctx context.Context, client *packngo.Client, url string) 
 	return r.Hardware, uint(r.Meta.LastPage), uint(r.Meta.Total), nil
 }
 
-func fetchFacility(ctx context.Context, client *packngo.Client, api, facility string) ([]map[string]interface{}, error) {
+func fetchFacility(ctx context.Context, client *packngo.Client, api, facility string, data chan<- []map[string]interface{}) error {
 	logger.Info("fetch start")
 	labels := prometheus.Labels{"method": "Ingest", "op": "fetch"}
 	ingestCount.With(labels).Inc()
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(labels).Set))
 
-	var j []map[string]interface{}
+	defer close(data)
+
 	base := api + "staff/cacher/hardware?facility=" + facility + "&sort_by=created_at&sort_direction=asc&per_page=50&page="
+	have := 0
 	for page, lastPage := uint(1), uint(1); page <= lastPage; page++ {
 		url := base + strconv.Itoa(int(page))
 		hw, last, total, err := fetchFacilityPage(ctx, client, url)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to fetch page %d of %d", page, lastPage)
+			return errors.Wrapf(err, "failed to fetch page")
 		}
 		lastPage = last
-
-		if j == nil {
-			j = make([]map[string]interface{}, 0, total)
-		}
-
-		j = append(j, hw...)
-		logger.With("have", len(j), "want", total).Info("fetched a page")
+		have += len(hw)
+		logger.With("have", have, "want", total).Info("fetched a page")
+		data <- hw
 	}
 
 	timer.ObserveDuration()
 	logger.Info("fetch done")
 
-	return j, nil
+	return nil
 }
 
-func copyin(ctx context.Context, db *sql.DB, data []map[string]interface{}) error {
+func copyin(ctx context.Context, db *sql.DB, data <-chan []map[string]interface{}) error {
+	for hws := range data {
+		if err := copyInEach(ctx, db, hws); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) error {
 	logger.Info("copy start")
 	labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
 	ingestCount.With(labels).Inc()
@@ -149,8 +158,8 @@ func (s *server) ingest(ctx context.Context, api, facility string) error {
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	data, err := fetchFacility(ctx, s.packet, api, facility)
-	if err != nil {
+	ch := make(chan []map[string]interface{}, 200)
+	if err := fetchFacility(ctx, s.packet, api, facility, ch); err != nil {
 		labels = prometheus.Labels{"method": "Ingest", "op": "fetch"}
 		ingestErrors.With(labels).Inc()
 		logger.With("error", err).Info()
@@ -161,7 +170,7 @@ func (s *server) ingest(ctx context.Context, api, facility string) error {
 		return err
 	}
 
-	if err = copyin(ctx, s.db, data); err != nil {
+	if err := copyin(ctx, s.db, ch); err != nil {
 		labels = prometheus.Labels{"method": "Ingest", "op": "copy"}
 		ingestErrors.With(labels).Inc()
 
