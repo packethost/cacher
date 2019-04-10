@@ -142,14 +142,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a10a63e26268f6c21032efc83bc65d30b29310ab732237289372b532fd197be8"
+  digest = "1:1ca2e3ce76f96bce53a210e4c48bfe82a4ed8a3278401c46313445fc629c55c3"
   name = "github.com/packethost/pkg"
   packages = [
     "log",
     "log/internal/rollbar",
   ]
   pruneopts = "UT"
-  revision = "1400bd87cdf28e4b8a7ec622d9d2ff570bf636e7"
+  revision = "e8e15f4ce77008481e28398a1675a87285670f9e"
 
 [[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
