@@ -107,67 +107,6 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
-func (s *server) ingest(ctx context.Context, api, facility string) error {
-	logger.Info("ingestion is starting")
-	defer logger.Info("ingestion is done")
-
-	label := prometheus.Labels{"method": "Ingest", "op": ""}
-	cacheInFlight.With(label).Inc()
-	defer cacheInFlight.With(label).Dec()
-
-	var errCount int
-	for errCount = 0; errCount < getMaxErrs(); errCount++ {
-		logger.Info("starting fetch")
-		label["op"] = "fetch"
-		ingestCount.With(label).Inc()
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		data, err := fetchFacility(ctx, s.packet, api, facility)
-		if err != nil {
-			ingestErrors.With(label).Inc()
-			logger.With("error", err).Info()
-
-			if ctx.Err() == context.Canceled {
-				return nil
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		timer.ObserveDuration()
-		logger.Info("done fetching")
-
-		logger.Info("copying")
-		label["op"] = "copy"
-		ingestCount.With(label).Inc()
-		timer = prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(label).Set))
-		if err = copyin(ctx, s.db, data); err != nil {
-			ingestErrors.With(label).Inc()
-
-			l := logger.With("error", err)
-			if pqErr := pqError(err); pqErr != nil {
-				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
-			}
-			l.Info()
-
-			if ctx.Err() == context.Canceled {
-				return nil
-			}
-
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		timer.ObserveDuration()
-		logger.Info("done copying")
-
-		s.dbLock.Lock()
-		s.dbReady = true
-		s.dbLock.Unlock()
-		return nil
-	}
-
-	return errors.New("maximum fetch/copy errors reached")
-}
-
 // Ingest implements cacher.CacherServer
 func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
 	logger.Info("ingest")
