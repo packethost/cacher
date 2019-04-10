@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -37,7 +38,7 @@ func fetchFacilityPage(ctx context.Context, client *packngo.Client, url string) 
 	return r.Hardware, uint(r.Meta.LastPage), uint(r.Meta.Total), nil
 }
 
-func fetchFacility(ctx context.Context, client *packngo.Client, api, facility string, data chan<- []map[string]interface{}) error {
+func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, facility string, data chan<- []map[string]interface{}) error {
 	logger.Info("fetch start")
 	labels := prometheus.Labels{"method": "Ingest", "op": "fetch"}
 	ingestCount.With(labels).Inc()
@@ -45,11 +46,17 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api, facility st
 
 	defer close(data)
 
-	base := api + "staff/cacher/hardware?facility=" + facility + "&sort_by=created_at&sort_direction=asc&per_page=50&page="
+	api.Path = "/staff/cacher/hardware"
+	q := api.Query()
+	q.Set("facility", facility)
+	q.Set("sort_by", "created_at")
+	q.Set("sort_direction", "asc")
+	q.Set("per_page", "50")
+
 	have := 0
 	for page, lastPage := uint(1), uint(1); page <= lastPage; page++ {
-		url := base + strconv.Itoa(int(page))
-		hw, last, total, err := fetchFacilityPage(ctx, client, url)
+		q.Set("page", strconv.Itoa(int(page)))
+		hw, last, total, err := fetchFacilityPage(ctx, client, api.String())
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch page")
 		}
@@ -151,7 +158,7 @@ func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) 
 	return nil
 }
 
-func (s *server) ingest(ctx context.Context, api, facility string) error {
+func (s *server) ingest(ctx context.Context, api *url.URL, facility string) error {
 	logger.Info("ingestion is starting")
 	defer logger.Info("ingestion is done")
 
