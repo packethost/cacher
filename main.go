@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
@@ -28,7 +29,7 @@ import (
 )
 
 var (
-	api            = "https://api.packet.net/"
+	api            = mustParseURL("https://api.packet.net/")
 	gitRev         = "unknown"
 	gitRevJSON     []byte
 	logger         log.Logger
@@ -36,6 +37,14 @@ var (
 	httpListenAddr = ":42112"
 	StartTime      = time.Now()
 )
+
+func mustParseURL(s string) *url.URL {
+	u, err := url.Parse(s)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
 
 func getMaxErrs() int {
 	sMaxErrs := os.Getenv("CACHER_MAX_ERRS")
@@ -235,11 +244,8 @@ func main() {
 	logger = log
 	defer cleanup()
 
-	if url := os.Getenv("PACKET_API_URL"); url != "" && url != api {
-		api = url
-		if !strings.HasSuffix(api, "/") {
-			api += "/"
-		}
+	if url := os.Getenv("PACKET_API_URL"); url != "" && mustParseURL(url).String() != api.String() {
+		api = mustParseURL(url)
 	}
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)

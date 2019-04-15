@@ -3,7 +3,7 @@ package rollbar
 import (
 	"fmt"
 	"os"
-	"strings"
+	"runtime"
 
 	"github.com/pkg/errors"
 	rollbar "github.com/rollbar/rollbar-go"
@@ -32,7 +32,7 @@ func Setup(l *zap.SugaredLogger, service string) func() {
 		log.Panicw("required envvar is unset", "envvar", "PACKET_VERSION")
 	}
 	rollbar.SetCodeVersion(v)
-	rollbar.SetServerRoot(service)
+	rollbar.SetServerRoot("/" + service)
 
 	enable := true
 	if os.Getenv("ROLLBAR_DISABLE") != "" {
@@ -81,51 +81,46 @@ func (e rError) Stack() rollbar.Stack {
 	type stackTracer interface {
 		StackTrace() errors.StackTrace
 	}
+	type causer interface {
+		Cause() error
+	}
 	ctx := map[string]interface{}{}
 
-	cause := e.Cause()
-	st, ok := cause.(stackTracer)
-	if !ok {
-		ctx["cause"] = cause
-		logInternalError(errors.New("cause does not implement StackTracer"), ctx)
-		return nil
+	err := e.Cause()
+	var st stackTracer
+	var ok bool
+	// try to find if there's a stackTracer in the stack of errors
+	// WithMessage does not add a stack so New->WithMessage->WM->...->WM means we need to unwrap until we get to the
+	// New'd one.
+	for {
+		st, ok = err.(stackTracer)
+		if ok {
+			break
+		}
+		cause, ok := err.(causer)
+		if !ok {
+			ctx["cause"] = e.Cause()
+			logInternalError(errors.New("cause does not implement StackTracer"), ctx)
+			return nil
+		}
+		err = cause.Cause()
 	}
 
 	stack := st.StackTrace()
 	rStack := rollbar.Stack(make([]rollbar.Frame, len(stack)))
 
-	var b strings.Builder
-	for i := range stack {
-		b.Reset()
-		fmt.Fprintf(&b, "%+s", stack[i])
-		n, err := fmt.Sscanf(b.String(), "%s\n\t%s", &rStack[i].Method, &rStack[i].Filename)
+	for i, frame := range stack {
+		// From pkg/error's docs
+		//
+		// Frame represents a program counter inside a stack frame.
+		// For historical reasons if Frame is interpreted as a uintptr
+		// its value represents the program counter + 1.
+		// type Frame uintptr
+		frame -= 1
 
-		if err != nil {
-			ctx["lineString"] = b.String()
-			logInternalError(errors.Wrap(err, "failed to scan stack frame"), ctx)
-			return nil
-		}
-		if n != 2 {
-			ctx["lineString"] = b.String()
-			ctx["count"] = n
-			logInternalError(errors.Wrap(err, "unexpected number of values scanned when scanning for stack frame func and file names"), ctx)
-			return nil
-		}
-
-		b.Reset()
-		fmt.Fprintf(&b, "%d", stack[i])
-		n, err = fmt.Sscanf(b.String(), "%d", &rStack[i].Line)
-		if err != nil {
-			ctx["lineString"] = b.String()
-			logInternalError(errors.Wrap(err, "failed to scan stack frame line number"), ctx)
-			return nil
-		}
-		if n != 1 {
-			ctx["lineString"] = b.String()
-			ctx["count"] = n
-			logInternalError(errors.Wrap(err, "unexpected number of values scanned when scanning for stack frame line number"), ctx)
-			return nil
-		}
+		f := runtime.FuncForPC(uintptr(frame))
+		rStack[i].Method = f.Name()
+		rStack[i].Filename, rStack[i].Line = f.FileLine(uintptr(frame))
 	}
 
 	return rStack

@@ -23,8 +23,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./certs/:/certs/
   db:
     image: quay.io/packet/cacher-db:v18.06.11.00
     environment:
