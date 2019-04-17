@@ -56,6 +56,7 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	have := 0
 	for page, lastPage := uint(1), uint(1); page <= lastPage; page++ {
 		q.Set("page", strconv.Itoa(int(page)))
+		api.RawQuery = q.Encode()
 		hw, last, total, err := fetchFacilityPage(ctx, client, api.String())
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch page")
