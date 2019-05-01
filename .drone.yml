@@ -115,3 +115,15 @@ pipeline:
     environment:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: bbg-lab1
+
+  deploy-phx1:
+    <<: *default_deploy
+    environment:
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: phx1
+
+  deploy-sea2:
+    <<: *default_deploy
+    environment:
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: sea2
