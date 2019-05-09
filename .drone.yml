@@ -127,3 +127,9 @@ pipeline:
     environment:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: sea2
+
+  deploy-atl2:
+    <<: *default_deploy
+    environment:
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: atl2
