@@ -145,3 +145,9 @@ pipeline:
     environment:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: pit1
+
+  deploy-lax2:
+    <<: *default_deploy
+    environment:
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: lax2
