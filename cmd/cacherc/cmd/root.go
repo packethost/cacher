@@ -26,7 +26,11 @@ func connectGRPC(facility string, err error) cacher.CacherClient {
 	if err != nil {
 		panic(err)
 	}
-	return client.New(facility)
+	c, err := client.New(facility)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func verifyUUIDs(args []string) error {
