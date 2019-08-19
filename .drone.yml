@@ -116,12 +116,6 @@ pipeline:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: ord4
 
-  deploy-bbg-lab1:
-    <<: *default_deploy
-    environment:
-      <<: *default_deploy_env
-      NOMAD_DEPLOY_SITE: bbg-lab1
-
   deploy-phx1:
     <<: *default_deploy
     environment:
@@ -163,3 +157,9 @@ pipeline:
     environment:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: ssg-az1
+
+  deploy-iad2:
+    <<: *default_deploy
+    environment:
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: iad2
