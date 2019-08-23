@@ -163,3 +163,9 @@ pipeline:
     environment:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: iad2
+
+  deploy-att-poc1:
+    <<: *default_deploy
+    environment:
+      <<: *default_deploy_env
+      NOMAD_DEPLOY_SITE: att-poc1
