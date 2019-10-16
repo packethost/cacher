@@ -153,6 +153,9 @@ pipeline:
 
   deploy-att-poc1:
     <<: *default_deploy
+    when:
+      event: deployment
+      environment: att-production
     environment:
       <<: *default_deploy_env
       NOMAD_DEPLOY_SITE: att-poc1
