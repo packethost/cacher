@@ -66,12 +66,6 @@ func connectDB() *sql.DB {
 		panic(err)
 	}
 	db.SetMaxOpenConns(50)
-	if err := truncate(db); err != nil {
-		if pqErr := pqError(err); pqErr != nil {
-			logger.With("detail", pqErr.Detail, "where", pqErr.Where).Error(err)
-		}
-		panic(err)
-	}
 	return db
 }
 
