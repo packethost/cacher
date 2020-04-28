@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("ROLLBAR_DISABLE", "1")
 	os.Setenv("ROLLBAR_TOKEN", "1")
 
-	logger, _, _ = log.Init("github.com/packethost/cacher")
+	logger, _ = log.Init("github.com/packethost/cacher")
 	setupMetrics("testing")
 
 	os.Exit(m.Run())

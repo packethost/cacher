@@ -238,12 +238,12 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 }
 
 func main() {
-	log, cleanup, err := log.Init("github.com/packethost/cacher")
+	log, err := log.Init("github.com/packethost/cacher")
 	if err != nil {
 		panic(err)
 	}
 	logger = log
-	defer cleanup()
+	defer logger.Close()
 
 	if url := os.Getenv("PACKET_API_URL"); url != "" && mustParseURL(url).String() != api.String() {
 		api = mustParseURL(url)
