@@ -3,13 +3,15 @@
 
 package cacher
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-
 import (
-	context "golang.org/x/net/context"
+	context "context"
+	fmt "fmt"
+	math "math"
+
+	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -21,10 +23,10 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type PushRequest struct {
-	Data                 string   `protobuf:"bytes,1,opt,name=data" json:"data,omitempty"`
+	Data                 string   `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -34,16 +36,17 @@ func (m *PushRequest) Reset()         { *m = PushRequest{} }
 func (m *PushRequest) String() string { return proto.CompactTextString(m) }
 func (*PushRequest) ProtoMessage()    {}
 func (*PushRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_21337d2617439f55, []int{0}
+	return fileDescriptor_fb7d8dcbbf6a4aae, []int{0}
 }
+
 func (m *PushRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PushRequest.Unmarshal(m, b)
 }
 func (m *PushRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PushRequest.Marshal(b, m, deterministic)
 }
-func (dst *PushRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PushRequest.Merge(dst, src)
+func (m *PushRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PushRequest.Merge(m, src)
 }
 func (m *PushRequest) XXX_Size() int {
 	return xxx_messageInfo_PushRequest.Size(m)
@@ -71,16 +74,17 @@ func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
 func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_21337d2617439f55, []int{1}
+	return fileDescriptor_fb7d8dcbbf6a4aae, []int{1}
 }
+
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Empty.Unmarshal(m, b)
 }
 func (m *Empty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Empty.Marshal(b, m, deterministic)
 }
-func (dst *Empty) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Empty.Merge(dst, src)
+func (m *Empty) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Empty.Merge(m, src)
 }
 func (m *Empty) XXX_Size() int {
 	return xxx_messageInfo_Empty.Size(m)
@@ -92,9 +96,9 @@ func (m *Empty) XXX_DiscardUnknown() {
 var xxx_messageInfo_Empty proto.InternalMessageInfo
 
 type GetRequest struct {
-	MAC                  string   `protobuf:"bytes,1,opt,name=MAC" json:"MAC,omitempty"`
-	IP                   string   `protobuf:"bytes,2,opt,name=IP" json:"IP,omitempty"`
-	ID                   string   `protobuf:"bytes,3,opt,name=ID" json:"ID,omitempty"`
+	MAC                  string   `protobuf:"bytes,1,opt,name=MAC,proto3" json:"MAC,omitempty"`
+	IP                   string   `protobuf:"bytes,2,opt,name=IP,proto3" json:"IP,omitempty"`
+	ID                   string   `protobuf:"bytes,3,opt,name=ID,proto3" json:"ID,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -104,16 +108,17 @@ func (m *GetRequest) Reset()         { *m = GetRequest{} }
 func (m *GetRequest) String() string { return proto.CompactTextString(m) }
 func (*GetRequest) ProtoMessage()    {}
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_21337d2617439f55, []int{2}
+	return fileDescriptor_fb7d8dcbbf6a4aae, []int{2}
 }
+
 func (m *GetRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRequest.Unmarshal(m, b)
 }
 func (m *GetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_GetRequest.Marshal(b, m, deterministic)
 }
-func (dst *GetRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetRequest.Merge(dst, src)
+func (m *GetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetRequest.Merge(m, src)
 }
 func (m *GetRequest) XXX_Size() int {
 	return xxx_messageInfo_GetRequest.Size(m)
@@ -146,7 +151,7 @@ func (m *GetRequest) GetID() string {
 }
 
 type Hardware struct {
-	JSON                 string   `protobuf:"bytes,1,opt,name=JSON" json:"JSON,omitempty"`
+	JSON                 string   `protobuf:"bytes,1,opt,name=JSON,proto3" json:"JSON,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -156,16 +161,17 @@ func (m *Hardware) Reset()         { *m = Hardware{} }
 func (m *Hardware) String() string { return proto.CompactTextString(m) }
 func (*Hardware) ProtoMessage()    {}
 func (*Hardware) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cacher_21337d2617439f55, []int{3}
+	return fileDescriptor_fb7d8dcbbf6a4aae, []int{3}
 }
+
 func (m *Hardware) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Hardware.Unmarshal(m, b)
 }
 func (m *Hardware) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Hardware.Marshal(b, m, deterministic)
 }
-func (dst *Hardware) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Hardware.Merge(dst, src)
+func (m *Hardware) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Hardware.Merge(m, src)
 }
 func (m *Hardware) XXX_Size() int {
 	return xxx_messageInfo_Hardware.Size(m)
@@ -190,6 +196,28 @@ func init() {
 	proto.RegisterType((*Hardware)(nil), "cacher.Hardware")
 }
 
+func init() { proto.RegisterFile("cacher.proto", fileDescriptor_fb7d8dcbbf6a4aae) }
+
+var fileDescriptor_fb7d8dcbbf6a4aae = []byte{
+	// 249 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x4e, 0x4c, 0xce,
+	0x48, 0x2d, 0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0xf0, 0x94, 0x14, 0xb9, 0xb8,
+	0x03, 0x4a, 0x8b, 0x33, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x84, 0x84, 0xb8, 0x58, 0x52,
+	0x12, 0x4b, 0x12, 0x25, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0xc0, 0x6c, 0x25, 0x76, 0x2e, 0x56,
+	0xd7, 0xdc, 0x82, 0x92, 0x4a, 0x25, 0x3b, 0x2e, 0x2e, 0xf7, 0xd4, 0x12, 0x98, 0x52, 0x01, 0x2e,
+	0x66, 0x5f, 0x47, 0x67, 0xa8, 0x4a, 0x10, 0x53, 0x88, 0x8f, 0x8b, 0xc9, 0x33, 0x40, 0x82, 0x09,
+	0x2c, 0xc0, 0xe4, 0x19, 0x00, 0xe6, 0xbb, 0x48, 0x30, 0x43, 0xf9, 0x2e, 0x4a, 0x72, 0x5c, 0x1c,
+	0x1e, 0x89, 0x45, 0x29, 0xe5, 0x89, 0x45, 0xa9, 0x20, 0x8b, 0xbc, 0x82, 0xfd, 0xfd, 0x60, 0x16,
+	0x81, 0xd8, 0x46, 0x87, 0x98, 0xb8, 0xd8, 0x9c, 0xc1, 0xce, 0x12, 0xd2, 0xe2, 0x62, 0x01, 0x39,
+	0x4b, 0x48, 0x58, 0x0f, 0xea, 0x6a, 0x24, 0x47, 0x4a, 0xf1, 0xc2, 0x04, 0xc1, 0xce, 0x12, 0xd2,
+	0xe5, 0x62, 0x75, 0xaa, 0x04, 0xd9, 0x2f, 0x04, 0x13, 0x47, 0xb8, 0x52, 0x4a, 0x00, 0x26, 0x06,
+	0xb7, 0x59, 0x87, 0x8b, 0xc5, 0xa9, 0xd2, 0x33, 0x80, 0x24, 0xd5, 0x2e, 0x44, 0xaa, 0xd6, 0xe0,
+	0x62, 0x76, 0xcc, 0xc9, 0x11, 0x42, 0x75, 0x20, 0xa6, 0x3a, 0x03, 0x46, 0x21, 0x35, 0x2e, 0x36,
+	0xcf, 0xbc, 0x74, 0x50, 0x38, 0xa2, 0x29, 0x46, 0xf3, 0x9c, 0x3e, 0x17, 0x6b, 0x78, 0x62, 0x49,
+	0x72, 0x06, 0x71, 0x0e, 0x30, 0x60, 0x4c, 0x62, 0x03, 0xc7, 0xaf, 0x31, 0x20, 0x00, 0x00, 0xff,
+	0xff, 0xd4, 0x6d, 0xcf, 0x9c, 0xef, 0x01, 0x00, 0x00,
+}
+
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
@@ -198,8 +226,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Cacher service
-
+// CacherClient is the client API for Cacher service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type CacherClient interface {
 	Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*Empty, error)
 	ByMAC(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*Hardware, error)
@@ -220,7 +249,7 @@ func NewCacherClient(cc *grpc.ClientConn) CacherClient {
 
 func (c *cacherClient) Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/cacher.Cacher/Push", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/cacher.Cacher/Push", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +258,7 @@ func (c *cacherClient) Push(ctx context.Context, in *PushRequest, opts ...grpc.C
 
 func (c *cacherClient) ByMAC(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*Hardware, error) {
 	out := new(Hardware)
-	err := grpc.Invoke(ctx, "/cacher.Cacher/ByMAC", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/cacher.Cacher/ByMAC", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +267,7 @@ func (c *cacherClient) ByMAC(ctx context.Context, in *GetRequest, opts ...grpc.C
 
 func (c *cacherClient) ByIP(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*Hardware, error) {
 	out := new(Hardware)
-	err := grpc.Invoke(ctx, "/cacher.Cacher/ByIP", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/cacher.Cacher/ByIP", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +276,7 @@ func (c *cacherClient) ByIP(ctx context.Context, in *GetRequest, opts ...grpc.Ca
 
 func (c *cacherClient) ByID(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*Hardware, error) {
 	out := new(Hardware)
-	err := grpc.Invoke(ctx, "/cacher.Cacher/ByID", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/cacher.Cacher/ByID", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +284,7 @@ func (c *cacherClient) ByID(ctx context.Context, in *GetRequest, opts ...grpc.Ca
 }
 
 func (c *cacherClient) All(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Cacher_AllClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Cacher_serviceDesc.Streams[0], c.cc, "/cacher.Cacher/All", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Cacher_serviceDesc.Streams[0], "/cacher.Cacher/All", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +317,7 @@ func (x *cacherAllClient) Recv() (*Hardware, error) {
 
 func (c *cacherClient) Ingest(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/cacher.Cacher/Ingest", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/cacher.Cacher/Ingest", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +325,7 @@ func (c *cacherClient) Ingest(ctx context.Context, in *Empty, opts ...grpc.CallO
 }
 
 func (c *cacherClient) Watch(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (Cacher_WatchClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Cacher_serviceDesc.Streams[1], c.cc, "/cacher.Cacher/Watch", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Cacher_serviceDesc.Streams[1], "/cacher.Cacher/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -327,8 +356,7 @@ func (x *cacherWatchClient) Recv() (*Hardware, error) {
 	return m, nil
 }
 
-// Server API for Cacher service
-
+// CacherServer is the server API for Cacher service.
 type CacherServer interface {
 	Push(context.Context, *PushRequest) (*Empty, error)
 	ByMAC(context.Context, *GetRequest) (*Hardware, error)
@@ -337,6 +365,32 @@ type CacherServer interface {
 	All(*Empty, Cacher_AllServer) error
 	Ingest(context.Context, *Empty) (*Empty, error)
 	Watch(*GetRequest, Cacher_WatchServer) error
+}
+
+// UnimplementedCacherServer can be embedded to have forward compatible implementations.
+type UnimplementedCacherServer struct {
+}
+
+func (*UnimplementedCacherServer) Push(ctx context.Context, req *PushRequest) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
+}
+func (*UnimplementedCacherServer) ByMAC(ctx context.Context, req *GetRequest) (*Hardware, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ByMAC not implemented")
+}
+func (*UnimplementedCacherServer) ByIP(ctx context.Context, req *GetRequest) (*Hardware, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ByIP not implemented")
+}
+func (*UnimplementedCacherServer) ByID(ctx context.Context, req *GetRequest) (*Hardware, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ByID not implemented")
+}
+func (*UnimplementedCacherServer) All(req *Empty, srv Cacher_AllServer) error {
+	return status.Errorf(codes.Unimplemented, "method All not implemented")
+}
+func (*UnimplementedCacherServer) Ingest(ctx context.Context, req *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ingest not implemented")
+}
+func (*UnimplementedCacherServer) Watch(req *GetRequest, srv Cacher_WatchServer) error {
+	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }
 
 func RegisterCacherServer(s *grpc.Server, srv CacherServer) {
@@ -513,26 +567,4 @@ var _Cacher_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Metadata: "cacher.proto",
-}
-
-func init() { proto.RegisterFile("cacher.proto", fileDescriptor_cacher_21337d2617439f55) }
-
-var fileDescriptor_cacher_21337d2617439f55 = []byte{
-	// 249 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x4e, 0x4c, 0xce,
-	0x48, 0x2d, 0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0xf0, 0x94, 0x14, 0xb9, 0xb8,
-	0x03, 0x4a, 0x8b, 0x33, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x84, 0x84, 0xb8, 0x58, 0x52,
-	0x12, 0x4b, 0x12, 0x25, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0xc0, 0x6c, 0x25, 0x76, 0x2e, 0x56,
-	0xd7, 0xdc, 0x82, 0x92, 0x4a, 0x25, 0x3b, 0x2e, 0x2e, 0xf7, 0xd4, 0x12, 0x98, 0x52, 0x01, 0x2e,
-	0x66, 0x5f, 0x47, 0x67, 0xa8, 0x4a, 0x10, 0x53, 0x88, 0x8f, 0x8b, 0xc9, 0x33, 0x40, 0x82, 0x09,
-	0x2c, 0xc0, 0xe4, 0x19, 0x00, 0xe6, 0xbb, 0x48, 0x30, 0x43, 0xf9, 0x2e, 0x4a, 0x72, 0x5c, 0x1c,
-	0x1e, 0x89, 0x45, 0x29, 0xe5, 0x89, 0x45, 0xa9, 0x20, 0x8b, 0xbc, 0x82, 0xfd, 0xfd, 0x60, 0x16,
-	0x81, 0xd8, 0x46, 0x87, 0x98, 0xb8, 0xd8, 0x9c, 0xc1, 0xce, 0x12, 0xd2, 0xe2, 0x62, 0x01, 0x39,
-	0x4b, 0x48, 0x58, 0x0f, 0xea, 0x6a, 0x24, 0x47, 0x4a, 0xf1, 0xc2, 0x04, 0xc1, 0xce, 0x12, 0xd2,
-	0xe5, 0x62, 0x75, 0xaa, 0x04, 0xd9, 0x2f, 0x04, 0x13, 0x47, 0xb8, 0x52, 0x4a, 0x00, 0x26, 0x06,
-	0xb7, 0x59, 0x87, 0x8b, 0xc5, 0xa9, 0xd2, 0x33, 0x80, 0x24, 0xd5, 0x2e, 0x44, 0xaa, 0xd6, 0xe0,
-	0x62, 0x76, 0xcc, 0xc9, 0x11, 0x42, 0x75, 0x20, 0xa6, 0x3a, 0x03, 0x46, 0x21, 0x35, 0x2e, 0x36,
-	0xcf, 0xbc, 0x74, 0x50, 0x38, 0xa2, 0x29, 0x46, 0xf3, 0x9c, 0x3e, 0x17, 0x6b, 0x78, 0x62, 0x49,
-	0x72, 0x06, 0x71, 0x0e, 0x30, 0x60, 0x4c, 0x62, 0x03, 0xc7, 0xaf, 0x31, 0x20, 0x00, 0x00, 0xff,
-	0xff, 0xd4, 0x6d, 0xcf, 0x9c, 0xef, 0x01, 0x00, 0x00,
 }
