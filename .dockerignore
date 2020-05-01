@@ -1,6 +1,5 @@
 *
 !/tls/
 !cacher-linux-x86_64
+!db/*
 !entrypoint.sh
-!db/migrate
-!db/docker-entrypoint-initdb.d/cacher-init.sql
