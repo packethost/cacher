@@ -197,7 +197,8 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	wg.Add(2)
 
 	ch := make(chan []map[string]interface{}, 1)
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
+	tStart := time.Now()
 	go func() {
 		defer wg.Done()
 
@@ -237,6 +238,7 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	}()
 
 	wg.Wait()
+	logger.With("duration", time.Since(tStart)).Info("ingest done")
 	cancel()
 
 	select {
