@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/packethost/packngo"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -95,15 +96,10 @@ func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) 
 		return errors.Wrap(err, "BEGIN transaction")
 	}
 
-	stmt, err := tx.Prepare(`
-	INSERT INTO
-		hardware (data)
-	VALUES
-		($1)
-	`)
+	stmt, err := tx.Prepare(pq.CopyIn("hardware", "data"))
 
 	if err != nil {
-		return errors.Wrap(err, "PREPARE INSERT")
+		return errors.Wrap(err, "PREPARE COPY")
 	}
 
 	for _, j := range data {
@@ -112,9 +108,9 @@ func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) 
 		if err != nil {
 			return errors.Wrap(err, "marshal json")
 		}
-		_, err = stmt.Exec(q)
+		_, err = stmt.Exec(string(q))
 		if err != nil {
-			return errors.Wrap(err, "INSERT")
+			return errors.Wrap(err, "COPY")
 		}
 	}
 
@@ -154,7 +150,7 @@ func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) 
 	}
 
 	timer.ObserveDuration()
-	logger.Info("copy done")
+	logger.With("duration", time.Since(now)).Info("copy done")
 
 	return nil
 }
