@@ -24,7 +24,6 @@ var allCmd = &cobra.Command{
 		}
 
 		var hw *cacher.Hardware
-		err = nil
 		for hw, err = alls.Recv(); err == nil && hw != nil; hw, err = alls.Recv() {
 			fmt.Println(hw.JSON)
 		}

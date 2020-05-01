@@ -32,7 +32,6 @@ var watchCmd = &cobra.Command{
 				}
 
 				var hw *cacher.Hardware
-				err = nil
 				for hw, err = stream.Recv(); err == nil && hw != nil; hw, err = stream.Recv() {
 					stdoutLock.Lock()
 					fmt.Println(hw.JSON)

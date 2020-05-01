@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -44,19 +43,6 @@ func mustParseURL(s string) *url.URL {
 		panic(err)
 	}
 	return u
-}
-
-func getMaxErrs() int {
-	sMaxErrs := os.Getenv("CACHER_MAX_ERRS")
-	if sMaxErrs == "" {
-		sMaxErrs = "5"
-	}
-
-	max, err := strconv.Atoi(sMaxErrs)
-	if err != nil {
-		panic("unable to convert CACHER_MAX_ERRS to int")
-	}
-	return max
 }
 
 func connectDB() *sql.DB {

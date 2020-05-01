@@ -8,4 +8,4 @@ in { pkgs ? import (_pkgs.fetchFromGitHub {
 }) { } }:
 with pkgs;
 
-mkShell { buildInputs = [ cfssl dep go go-protobuf protobuf ]; }
+mkShell { buildInputs = [ cfssl dep go go-protobuf golangci-lint protobuf ]; }
