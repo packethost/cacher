@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
+	github.com/gammazero/workerpool v0.0.0-20200311205957-7b00833861c6
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -26,7 +27,6 @@ require (
 	github.com/spf13/viper v1.0.2
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6 // indirect
-	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
 	google.golang.org/grpc v1.22.0
 	gopkg.in/h2non/gock.v1 v1.0.14
 )

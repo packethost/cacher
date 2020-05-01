@@ -9,8 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gammazero/workerpool"
 	"github.com/lib/pq"
 	"github.com/packethost/packngo"
+	"github.com/packethost/pkg/env"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -45,6 +47,8 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	ingestCount.With(labels).Inc()
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(labels).Set))
 
+	pool := workerpool.New(env.Int("CACHER_CONCURRENT_FETCHES", 4))
+
 	defer close(data)
 
 	api.Path = "/staff/cacher/hardware"
@@ -52,24 +56,44 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	q.Set("facility", facility)
 	q.Set("sort_by", "created_at")
 	q.Set("sort_direction", "asc")
-	q.Set("per_page", "50")
-
-	have := 0
-	for page, lastPage := uint(1), uint(1); page <= lastPage; page++ {
-		q.Set("page", strconv.Itoa(int(page)))
-		api.RawQuery = q.Encode()
-		hw, last, total, err := fetchFacilityPage(ctx, client, api.String())
-		if err != nil {
-			return errors.Wrapf(err, "failed to fetch page")
-		}
-		lastPage = last
-		have += len(hw)
-		logger.With("have", have, "want", total).Info("fetched a page")
-		data <- hw
+	q.Set("per_page", "1")
+	api.RawQuery = q.Encode()
+	_, _, total, err := fetchFacilityPage(ctx, client, api.String())
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch initial page")
 	}
 
+	perPage := 50
+	iterations := int(total) / perPage
+	if int(total)%perPage != 0 {
+		iterations++
+	}
+
+	q.Set("per_page", strconv.Itoa(perPage))
+	tStart := time.Now()
+	for i := 1; i <= iterations; i++ {
+		q.Set("page", strconv.Itoa(i))
+		api.RawQuery = q.Encode()
+		url := api.String()
+		page := i
+
+		pool.Submit(func() {
+			logger.With("page", page).Info("fetching a page")
+			tPageStart := time.Now()
+			hw, _, _, err := fetchFacilityPage(ctx, client, url)
+			if err != nil {
+				logger.Fatal(errors.Wrapf(err, "failed to fetch page"))
+				return
+			}
+			logger.With("page", page, "pages", iterations, "duration", time.Since(tPageStart)).Info("fetched a page")
+			data <- hw
+		})
+	}
+
+	pool.StopWait()
+
 	timer.ObserveDuration()
-	logger.Info("fetch done")
+	logger.With("duration", time.Since(tStart)).Info("fetch done")
 
 	return nil
 }
