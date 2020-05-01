@@ -29,7 +29,7 @@ func setupMetrics(facility string) {
 	cacheDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "cache_ops_duration_seconds",
 		Help:    "Duration of cache operations",
-		Buckets: prometheus.LinearBuckets(.01, .05, 10),
+		Buckets: prometheus.LinearBuckets(.01, .1, 10),
 	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
 	cacheErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "cache_ops_errors_total",

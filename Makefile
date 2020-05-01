@@ -7,21 +7,14 @@ all: ${binaries}
 server: ${server}
 cli: ${cli}
 
-${server}:
+${cli} ${server}: protos/cacher/cacher.pb.go
 	CGO_ENABLED=0 GOOS=linux go build -o $@ ./$(@D)
 
-${cli}:
-	CGO_ENABLED=0 GOOS=linux go build -o $@ ./$(@D)
+gen: protos/cacher/cacher.pb.go
 
-ifeq ($(origin GOBIN), undefined)
-GOBIN := ${PWD}/bin
-export GOBIN
-endif
-
-gen:
-	PATH=$$GOBIN:$$PATH go install ./vendor/github.com/golang/protobuf/protoc-gen-go
-	PATH=$$GOBIN:$$PATH go install ./vendor/github.com/spf13/cobra/cobra
-	PATH=$$GOBIN:$$PATH go generate ./...
+protos/cacher/cacher.pb.go: protos/cacher/cacher.proto
+	go generate ./...
+	goimports -w $@
 
 ifeq ($(CI),drone)
 run: ${server}
@@ -31,7 +24,7 @@ test:
 else
 run: ${binaries}
 	docker-compose up -d --build db
-	docker-compose up --build server cli
+	docker-compose up --build server
 test:
 	docker-compose up -d --build db
 	docker-compose up test

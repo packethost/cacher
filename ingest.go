@@ -9,7 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gammazero/workerpool"
+	"github.com/lib/pq"
 	"github.com/packethost/packngo"
+	"github.com/packethost/pkg/env"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -44,6 +47,8 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	ingestCount.With(labels).Inc()
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(labels).Set))
 
+	pool := workerpool.New(env.Int("CACHER_CONCURRENT_FETCHES", 4))
+
 	defer close(data)
 
 	api.Path = "/staff/cacher/hardware"
@@ -51,24 +56,49 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	q.Set("facility", facility)
 	q.Set("sort_by", "created_at")
 	q.Set("sort_direction", "asc")
-	q.Set("per_page", "50")
+	q.Set("per_page", "1")
 
-	have := 0
-	for page, lastPage := uint(1), uint(1); page <= lastPage; page++ {
-		q.Set("page", strconv.Itoa(int(page)))
-		api.RawQuery = q.Encode()
-		hw, last, total, err := fetchFacilityPage(ctx, client, api.String())
-		if err != nil {
-			return errors.Wrapf(err, "failed to fetch page")
-		}
-		lastPage = last
-		have += len(hw)
-		logger.With("have", have, "want", total).Info("fetched a page")
-		data <- hw
+	api.RawQuery = q.Encode()
+	_, _, total, err := fetchFacilityPage(ctx, client, api.String())
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch initial page")
 	}
 
+	perPage := env.Int("CACHER_FETCH_PER_PAGE", 50)
+	if perPage > 1000 {
+		logger.Info("limiting per_page to 1000")
+		perPage = 1000
+	}
+	iterations := int(total) / perPage
+	if int(total)%perPage != 0 {
+		iterations++
+	}
+
+	q.Set("per_page", strconv.Itoa(perPage))
+	tStart := time.Now()
+	for i := 1; i <= iterations; i++ {
+		q.Set("page", strconv.Itoa(i))
+		api.RawQuery = q.Encode()
+		url := api.String()
+		page := i
+
+		pool.Submit(func() {
+			logger.With("page", page).Info("fetching a page")
+			tPageStart := time.Now()
+			hw, _, _, err := fetchFacilityPage(ctx, client, url)
+			if err != nil {
+				logger.Fatal(errors.Wrapf(err, "failed to fetch page"))
+				return
+			}
+			logger.With("page", page, "pages", iterations, "duration", time.Since(tPageStart)).Info("fetched a page")
+			data <- hw
+		})
+	}
+
+	pool.StopWait()
+
 	timer.ObserveDuration()
-	logger.Info("fetch done")
+	logger.With("duration", time.Since(tStart)).Info("fetch done")
 
 	return nil
 }
@@ -95,15 +125,10 @@ func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) 
 		return errors.Wrap(err, "BEGIN transaction")
 	}
 
-	stmt, err := tx.Prepare(`
-	INSERT INTO
-		hardware (data)
-	VALUES
-		($1)
-	`)
+	stmt, err := tx.Prepare(pq.CopyIn("hardware", "data"))
 
 	if err != nil {
-		return errors.Wrap(err, "PREPARE INSERT")
+		return errors.Wrap(err, "PREPARE COPY")
 	}
 
 	for _, j := range data {
@@ -112,9 +137,9 @@ func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) 
 		if err != nil {
 			return errors.Wrap(err, "marshal json")
 		}
-		_, err = stmt.Exec(q)
+		_, err = stmt.Exec(string(q))
 		if err != nil {
-			return errors.Wrap(err, "INSERT")
+			return errors.Wrap(err, "COPY")
 		}
 	}
 
@@ -154,7 +179,7 @@ func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) 
 	}
 
 	timer.ObserveDuration()
-	logger.Info("copy done")
+	logger.With("duration", time.Since(now)).Info("copy done")
 
 	return nil
 }
@@ -172,7 +197,8 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	wg.Add(2)
 
 	ch := make(chan []map[string]interface{}, 1)
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
+	tStart := time.Now()
 	go func() {
 		defer wg.Done()
 
@@ -212,6 +238,7 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	}()
 
 	wg.Wait()
+	logger.With("duration", time.Since(tStart)).Info("ingest done")
 	cancel()
 
 	select {

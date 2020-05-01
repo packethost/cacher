@@ -1,4 +1,4 @@
-FROM alpine:3.7
+FROM alpine:3.11
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "/cacher" ]
@@ -9,6 +9,5 @@ RUN apk add --no-cache --update --upgrade ca-certificates postgresql-client
 RUN apk add --no-cache --update --upgrade --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing cfssl
 COPY entrypoint.sh /entrypoint.sh
 COPY tls /tls
-COPY db/migrate /migrate
-COPY db/docker-entrypoint-initdb.d/cacher-init.sql /init.sql
+COPY db/* /
 COPY cacher-linux-x86_64 /cacher

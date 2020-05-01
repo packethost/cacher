@@ -20,13 +20,16 @@ func TestMain(m *testing.M) {
 	os.Setenv("ROLLBAR_DISABLE", "1")
 	os.Setenv("ROLLBAR_TOKEN", "1")
 
-	logger, _, _ = log.Init("github.com/packethost/cacher")
+	logger, _ = log.Init("github.com/packethost/cacher")
 	setupMetrics("testing")
 
 	os.Exit(m.Run())
 }
 
 func TestFetchFacility(t *testing.T) {
+	os.Setenv("CACHER_CONCURRENT_FETCHES", "1")
+
+	logger = log.Test(t, "github.com/packethost/cacher")
 	defer gock.Off()
 	facility := "testing" + strconv.Itoa(rand.Int())
 
@@ -35,7 +38,7 @@ func TestFetchFacility(t *testing.T) {
 			"meta": map[string]interface{}{
 				"current_page": 1,
 				"last_page":    2,
-				"total":        2,
+				"total":        100,
 			},
 			"Hardware": []map[string]interface{}{
 				{
@@ -47,7 +50,7 @@ func TestFetchFacility(t *testing.T) {
 			"meta": map[string]interface{}{
 				"current_page": 2,
 				"last_page":    2,
-				"total":        2,
+				"total":        100,
 			},
 			"Hardware": []map[string]interface{}{
 				{
@@ -56,6 +59,13 @@ func TestFetchFacility(t *testing.T) {
 			},
 		},
 	}
+
+	gock.New("https://api.packet.net").
+		Get("staff/cacher/hardware").
+		MatchParam("facility", facility).
+		MatchParam("per_page", "1").
+		Reply(200).
+		JSON(pages[0])
 	for i, m := range pages {
 		gock.New("https://api.packet.net").
 			Get("staff/cacher/hardware").
