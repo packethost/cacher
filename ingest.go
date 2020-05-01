@@ -57,13 +57,18 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	q.Set("sort_by", "created_at")
 	q.Set("sort_direction", "asc")
 	q.Set("per_page", "1")
+
 	api.RawQuery = q.Encode()
 	_, _, total, err := fetchFacilityPage(ctx, client, api.String())
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch initial page")
 	}
 
-	perPage := 50
+	perPage := env.Int("CACHER_FETCH_PER_PAGE", 50)
+	if perPage > 1000 {
+		logger.Info("limiting per_page to 1000")
+		perPage = 1000
+	}
 	iterations := int(total) / perPage
 	if int(total)%perPage != 0 {
 		iterations++
