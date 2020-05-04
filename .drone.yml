@@ -1,46 +1,50 @@
 ---
+kind: pipeline
+type: docker
+name: default
 
-workspace:
-  base: /go
-  path: src/github.com/packethost/cacher
-
-pipeline:
-  lint:
-    group: ci
+steps:
+  - name: lint
     image: golangci/golangci-lint:v1.24.0
     commands:
       - golangci-lint run -v -D errcheck
 
-  fmt:
-    group: ci
+  - name: fmt
     image: golang:1.13-alpine
     commands:
+      - set -o pipefail
       - apk add --update --upgrade --no-cache git
       - go get golang.org/x/tools/cmd/goimports
       - goimports -d . | (! grep .)
 
-  test:
+  - name: test
     group: ci
     image: golang:1.13-alpine
     commands:
       - CGO_ENABLED=0 go test -v ./...
 
-  build:
+  - name: build
     group: ci
     image: golang:1.13-alpine
     commands:
       - CGO_ENABLED=0 go build -ldflags="-X main.gitRev=${DRONE_COMMIT_SHA}" -o cacher-linux-x86_64
 
-  publish:
-    group: publish
+  - name: publish
     image: plugins/docker
     registry: quay.io
-    repo: quay.io/packet/cacher
-    tags:
-      - ${DRONE_BRANCH/\//-}
-      - ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
+    settings:
+      repo: quay.io/packet/cacher
+      tags:
+        - ${DRONE_BRANCH/\//-}
+        - ${DRONE_BUILD_NUMBER}-${DRONE_COMMIT_SHA}
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
     when:
       event: push
-    secrets:
-      - docker_password
-      - docker_username
+    depends_on:
+      - build
+      - fmt
+      - lint
+      - test
