@@ -7,6 +7,7 @@ require (
 	github.com/gammazero/workerpool v0.0.0-20200311205957-7b00833861c6
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.2
+	github.com/google/uuid v1.1.1
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -29,4 +30,5 @@ require (
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6 // indirect
 	google.golang.org/grpc v1.22.0
 	gopkg.in/h2non/gock.v1 v1.0.14
+	inet.af/netaddr v0.0.0-20200430175045-5aaf2097c7fc
 )
