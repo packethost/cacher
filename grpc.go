@@ -23,8 +23,8 @@ type server struct {
 
 	hw *hardware.Hardware
 
-	dbLock  sync.RWMutex
-	dbReady bool
+	ingestReadyLock sync.RWMutex
+	ingestDone      bool
 
 	watchLock sync.RWMutex
 	watch     map[string]chan string
@@ -93,9 +93,9 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 	}
 
 	if j == "" {
-		s.dbLock.RLock()
-		ready := s.dbReady
-		s.dbLock.RUnlock()
+		s.ingestReadyLock.RLock()
+		ready := s.ingestDone
+		s.ingestReadyLock.RUnlock()
 		if !ready {
 			cacheStalls.With(labels).Inc()
 			return &cacher.Hardware{}, errors.New("DB is not ready")
@@ -135,9 +135,9 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	s.dbLock.RLock()
-	ready := s.dbReady
-	s.dbLock.RUnlock()
+	s.ingestReadyLock.RLock()
+	ready := s.ingestDone
+	s.ingestReadyLock.RUnlock()
 	if !ready {
 		cacheStalls.With(labels).Inc()
 		return errors.New("DB is not ready")

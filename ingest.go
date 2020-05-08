@@ -197,9 +197,9 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	default:
 	}
 
-	s.dbLock.Lock()
-	s.dbReady = true
-	s.dbLock.Unlock()
+	s.ingestReadyLock.Lock()
+	s.ingestDone = true
+	s.ingestReadyLock.Unlock()
 
 	return nil
 }
