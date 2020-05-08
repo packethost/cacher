@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"net"
@@ -44,22 +43,6 @@ func mustParseURL(s string) *url.URL {
 		panic(err)
 	}
 	return u
-}
-
-func connectDB() *sql.DB {
-	db, err := sql.Open("postgres", "")
-	if err != nil {
-		logger.Error(err)
-		panic(err)
-	}
-	db.SetMaxOpenConns(50)
-	if err := truncate(db); err != nil {
-		if pqErr := pqError(err); pqErr != nil {
-			logger.With("detail", pqErr.Detail, "where", pqErr.Where).Error(err)
-		}
-		panic(err)
-	}
-	return db
 }
 
 func setupGRPC(ctx context.Context, client *packngo.Client, facility string, errCh chan<- error) *server {

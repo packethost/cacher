@@ -23,9 +23,7 @@ test:
 	go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
 else
 run: ${binaries}
-	docker-compose up -d --build db
 	docker-compose up --build server
 test:
-	docker-compose up -d --build db
 	docker-compose up test
 endif

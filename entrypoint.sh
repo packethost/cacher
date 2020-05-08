@@ -11,8 +11,4 @@ if [ -z "${CACHER_TLS_CERT:-}" ]; then
 	)
 fi
 
-if [[ -z ${CACHER_DB_NO_MIGRATE:-} ]]; then
-	/migrate
-fi
-
 "$@"
