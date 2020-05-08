@@ -6,12 +6,13 @@ import (
 )
 
 var (
-	cacheDuration prometheus.ObserverVec
-	cacheErrors   *prometheus.CounterVec
-	cacheHits     *prometheus.CounterVec
-	cacheInFlight *prometheus.GaugeVec
-	cacheStalls   *prometheus.CounterVec
-	cacheTotals   *prometheus.CounterVec
+	cacheCountTotal prometheus.Gauge
+	cacheDuration   prometheus.ObserverVec
+	cacheErrors     *prometheus.CounterVec
+	cacheHits       *prometheus.CounterVec
+	cacheInFlight   *prometheus.GaugeVec
+	cacheStalls     *prometheus.CounterVec
+	cacheTotals     *prometheus.CounterVec
 
 	ingestCount    *prometheus.CounterVec
 	ingestDone     prometheus.Counter
@@ -23,6 +24,10 @@ var (
 )
 
 func setupMetrics(facility string) {
+	cacheCountTotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "cache_count_total",
+		Help: "Number of in devices in memory.",
+	})
 	cacheDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "cache_ops_duration_seconds",
 		Help:    "Duration of cache operations",
