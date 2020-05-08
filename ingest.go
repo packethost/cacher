@@ -142,6 +142,7 @@ func copyInEach(ctx context.Context, hw *hardware.Hardware, data []map[string]in
 func (s *server) ingest(ctx context.Context, api *url.URL, facility string) error {
 	logger.Info("ingestion is starting")
 	defer logger.Info("ingestion is done")
+	ingestRunning.Add(1)
 
 	labels := prometheus.Labels{"method": "Ingest", "op": ""}
 	cacheInFlight.With(labels).Inc()
@@ -189,6 +190,7 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 
 	wg.Wait()
 	logger.With("duration", time.Since(tStart)).Info("ingest done")
+	ingestDone.Add(1)
 	cancel()
 
 	select {

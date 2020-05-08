@@ -14,8 +14,10 @@ var (
 	cacheTotals   *prometheus.CounterVec
 
 	ingestCount    *prometheus.CounterVec
-	ingestErrors   *prometheus.CounterVec
+	ingestDone     prometheus.Counter
 	ingestDuration *prometheus.GaugeVec
+	ingestErrors   *prometheus.CounterVec
+	ingestRunning  prometheus.Counter
 
 	watchMissTotal prometheus.Counter
 )
@@ -85,6 +87,10 @@ func setupMetrics(facility string) {
 		Name: "ingest_op_count_total",
 		Help: "Number of attempts made to ingest facility data.",
 	}, []string{"method", "op"})
+	ingestDone = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ingest_done",
+		Help: "Reports whether ingest is done",
+	})
 	ingestDuration = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ingest_op_duration_seconds",
 		Help: "Duration of successful ingestion actions while attempting to ingest facility data.",
@@ -93,6 +99,10 @@ func setupMetrics(facility string) {
 		Name: "ingest_error_count_total",
 		Help: "Number of errors occurred attempting to ingest facility data.",
 	}, []string{"method", "op"})
+	ingestRunning = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ingest_running",
+		Help: "Reports whether ingest is running",
+	})
 	labels = []prometheus.Labels{
 		{"method": "Ingest", "op": ""},
 		{"method": "Ingest", "op": "fetch"},
