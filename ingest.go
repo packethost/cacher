@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/url"
 	"strconv"
@@ -10,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
-	"github.com/lib/pq"
+	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/packngo"
 	"github.com/packethost/pkg/env"
 	"github.com/pkg/errors"
@@ -103,9 +102,9 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	return nil
 }
 
-func copyin(ctx context.Context, db *sql.DB, data <-chan []map[string]interface{}) error {
+func copyin(ctx context.Context, hw *hardware.Hardware, data <-chan []map[string]interface{}) error {
 	for hws := range data {
-		if err := copyInEach(ctx, db, hws); err != nil {
+		if err := copyInEach(ctx, hw, hws); err != nil {
 			return err
 		}
 	}
@@ -113,69 +112,25 @@ func copyin(ctx context.Context, db *sql.DB, data <-chan []map[string]interface{
 	return nil
 }
 
-func copyInEach(ctx context.Context, db *sql.DB, data []map[string]interface{}) error {
+func copyInEach(ctx context.Context, hw *hardware.Hardware, data []map[string]interface{}) error {
 	logger.Info("copy start")
 	labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
 	ingestCount.With(labels).Inc()
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(labels).Set))
 
 	now := time.Now()
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return errors.Wrap(err, "BEGIN transaction")
-	}
-
-	stmt, err := tx.Prepare(pq.CopyIn("hardware", "data"))
-
-	if err != nil {
-		return errors.Wrap(err, "PREPARE COPY")
-	}
 
 	for _, j := range data {
 		var q []byte
-		q, err = json.Marshal(j)
+		q, err := json.Marshal(j)
 		if err != nil {
 			return errors.Wrap(err, "marshal json")
 		}
-		_, err = stmt.Exec(string(q))
+
+		_, err = hw.Add(string(q))
 		if err != nil {
-			return errors.Wrap(err, "COPY")
+			return err
 		}
-	}
-
-	err = stmt.Close()
-	if err != nil {
-		return errors.Wrap(err, "Close")
-	}
-
-	// Remove duplicates, keeping what has already been inserted via insertIntoDB since startup
-	_, err = tx.Exec(`
-	DELETE FROM hardware a
-	USING hardware b
-	WHERE a.id IS NULL
-	AND (a.data ->> 'id')::uuid = b.id
-	`)
-	if err != nil {
-		return errors.Wrap(err, "delete overwrite")
-	}
-
-	_, err = tx.Exec(`
-	UPDATE hardware
-	SET (inserted_at, id) =
-	  ($1::timestamptz, (data ->> 'id')::uuid);
-	`, now)
-	if err != nil {
-		return errors.Wrap(err, "set inserted_at and id")
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return errors.Wrap(err, "COMMIT")
-	}
-
-	_, err = db.Exec("VACUUM FULL ANALYZE")
-	if err != nil {
-		return errors.Wrap(err, "VACCUM FULL ANALYZE")
 	}
 
 	timer.ObserveDuration()
@@ -205,7 +160,7 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 		if err := fetchFacility(ctx, s.packet, api, facility, ch); err != nil {
 			labels := prometheus.Labels{"method": "Ingest", "op": "fetch"}
 			ingestErrors.With(labels).Inc()
-			logger.With("error", err).Info()
+			logger.Error(err)
 
 			if ctx.Err() == context.Canceled {
 				return
@@ -218,15 +173,10 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	go func() {
 		defer wg.Done()
 
-		if err := copyin(ctx, s.db, ch); err != nil {
+		if err := copyin(ctx, s.hw, ch); err != nil {
 			labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
 			ingestErrors.With(labels).Inc()
-
-			l := logger.With("error", err)
-			if pqErr := pqError(err); pqErr != nil {
-				l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
-			}
-			l.Info()
+			logger.Error(err)
 
 			if ctx.Err() == context.Canceled {
 				return
@@ -247,9 +197,9 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	default:
 	}
 
-	s.dbLock.Lock()
-	s.dbReady = true
-	s.dbLock.Unlock()
+	s.ingestReadyLock.Lock()
+	s.ingestDone = true
+	s.ingestReadyLock.Unlock()
 
 	return nil
 }

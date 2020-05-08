@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"net"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
 	"github.com/packethost/pkg/log"
@@ -45,23 +45,7 @@ func mustParseURL(s string) *url.URL {
 	return u
 }
 
-func connectDB() *sql.DB {
-	db, err := sql.Open("postgres", "")
-	if err != nil {
-		logger.Error(err)
-		panic(err)
-	}
-	db.SetMaxOpenConns(50)
-	if err := truncate(db); err != nil {
-		if pqErr := pqError(err); pqErr != nil {
-			logger.With("detail", pqErr.Detail, "where", pqErr.Where).Error(err)
-		}
-		panic(err)
-	}
-	return db
-}
-
-func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility string, errCh chan<- error) *server {
+func setupGRPC(ctx context.Context, client *packngo.Client, facility string, errCh chan<- error) *server {
 	var (
 		certPEM []byte
 		modT    time.Time
@@ -127,8 +111,8 @@ func setupGRPC(ctx context.Context, client *packngo.Client, db *sql.DB, facility
 		cert:   certPEM,
 		modT:   modT,
 		packet: client,
-		db:     db,
 		quit:   ctx.Done(),
+		hw:     hardware.New(),
 		watch:  map[string]chan string{},
 	}
 
@@ -236,7 +220,6 @@ func main() {
 	}
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
-	db := connectDB()
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
 
@@ -250,7 +233,7 @@ func main() {
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	server := setupGRPC(ctx, client, db, facility, errCh)
+	server := setupGRPC(ctx, client, facility, errCh)
 	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
 
 	if err := server.ingest(ctx, api, facility); err != nil {

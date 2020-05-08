@@ -21,7 +21,16 @@ steps:
     group: ci
     image: golang:1.13-alpine
     commands:
-      - CGO_ENABLED=0 go test -v ./...
+      - CGO_ENABLED=0 go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+
+  - name: codecov
+    group: publish
+    image: plugins/codecov
+    settings:
+      token:
+        from_secret: codecov_token
+    depends_on:
+      - test
 
   - name: build
     group: ci

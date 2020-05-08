@@ -11,28 +11,7 @@ services:
       PACKET_CONSUMER_TOKEN: ${PACKET_CONSUMER_TOKEN}
       PACKET_ENV: testing
       PACKET_VERSION: 42
-      PGDATABASE: cacher
-      PGHOST: db
-      PGPASSWORD: cacher
-      PGPORT: 5432
-      PGSSLMODE: disable
-      PGUSER: postgres
       ROLLBAR_TOKEN: 42
     volumes:
       - ./certs:/certs
-    depends_on:
-      db:
-        condition: service_healthy
 
-  db:
-    image: postgres:11-alpine
-    environment:
-      POSTGRES_DB: cacher
-      POSTGRES_PASSWORD: cacher
-    ports:
-      - 5432:5432
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 1s
-      timeout: 1s
-      retries: 30

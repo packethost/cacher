@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"sync"
 	"time"
 
+	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
 	"github.com/pkg/errors"
@@ -20,11 +19,12 @@ type server struct {
 	modT time.Time
 
 	packet *packngo.Client
-	db     *sql.DB
 	quit   <-chan struct{}
 
-	dbLock  sync.RWMutex
-	dbReady bool
+	hw *hardware.Hardware
+
+	ingestReadyLock sync.RWMutex
+	ingestDone      bool
 
 	watchLock sync.RWMutex
 	watch     map[string]chan string
@@ -39,67 +39,25 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	// must be a copy so deferred cacheInFlight.Dec matches the Inc
-	labels = prometheus.Labels{"method": "Push", "op": ""}
-
-	var h struct {
-		ID    string
-		State string
-	}
-	err := json.Unmarshal([]byte(in.Data), &h)
-	if err != nil {
-		cacheTotals.With(labels).Inc()
-		cacheErrors.With(labels).Inc()
-		err = errors.Wrap(err, "unmarshal json")
-		logger.Error(err)
-		return &cacher.Empty{}, err
-	}
-
-	if h.ID == "" {
-		cacheTotals.With(labels).Inc()
-		cacheErrors.With(labels).Inc()
-		err = errors.New("id must be set to a UUID")
-		logger.Error(err)
-		return &cacher.Empty{}, err
-	}
-
-	logger.With("id", h.ID).Info("data pushed")
-
-	var fn func() error
-	msg := ""
-	if h.State != "deleted" {
-		labels["op"] = "insert"
-		msg = "inserting into DB"
-		fn = func() error { return insertIntoDB(ctx, s.db, in.Data) }
-	} else {
-		msg = "deleting from DB"
-		labels["op"] = "delete"
-		fn = func() error { return deleteFromDB(ctx, s.db, h.ID) }
-	}
-
 	cacheTotals.With(labels).Inc()
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
-	defer timer.ObserveDuration()
 
-	logger.Info(msg)
-	err = fn()
-	logger.Info("done " + msg)
+	id, err := s.hw.Add(in.Data)
 	if err != nil {
 		cacheErrors.With(labels).Inc()
-		l := logger
-		if pqErr := pqError(err); pqErr != nil {
-			l = l.With("detail", pqErr.Detail, "where", pqErr.Where)
-		}
-		l.Error(err)
+		logger.Error(err)
+		return nil, err
 	}
 
+	timer.ObserveDuration()
+
 	s.watchLock.RLock()
-	if ch := s.watch[h.ID]; ch != nil {
+	if ch := s.watch[id]; ch != nil {
 		select {
 		case ch <- in.Data:
 		default:
 			watchMissTotal.Inc()
-			logger.With("id", h.ID).Info("skipping blocked watcher")
+			logger.With("id", id).Info("skipping blocked watcher")
 		}
 	}
 	s.watchLock.RUnlock()
@@ -135,9 +93,9 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 	}
 
 	if j == "" {
-		s.dbLock.RLock()
-		ready := s.dbReady
-		s.dbLock.RUnlock()
+		s.ingestReadyLock.RLock()
+		ready := s.ingestDone
+		s.ingestReadyLock.RUnlock()
 		if !ready {
 			cacheStalls.With(labels).Inc()
 			return &cacher.Hardware{}, errors.New("DB is not ready")
@@ -151,21 +109,21 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 // ByMAC implements cacher.CacherServer
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
 	return s.by("ByMAC", func() (string, error) {
-		return getByMAC(ctx, s.db, in.MAC)
+		return s.hw.ByMAC(in.MAC)
 	})
 }
 
 // ByIP implements cacher.CacherServer
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
 	return s.by("ByIP", func() (string, error) {
-		return getByIP(ctx, s.db, in.IP)
+		return s.hw.ByIP(in.IP)
 	})
 }
 
 // ByID implements cacher.CacherServer
 func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
 	return s.by("ByID", func() (string, error) {
-		return getByID(ctx, s.db, in.ID)
+		return s.hw.ByID(in.ID)
 	})
 }
 
@@ -177,9 +135,9 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	s.dbLock.RLock()
-	ready := s.dbReady
-	s.dbLock.RUnlock()
+	s.ingestReadyLock.RLock()
+	ready := s.ingestDone
+	s.ingestReadyLock.RUnlock()
 	if !ready {
 		cacheStalls.With(labels).Inc()
 		return errors.New("DB is not ready")
@@ -187,7 +145,7 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
 	defer timer.ObserveDuration()
-	err := getAll(s.db, func(j string) error {
+	err := s.hw.All(func(j string) error {
 		return stream.Send(&cacher.Hardware{JSON: j})
 	})
 	if err != nil {
@@ -213,7 +171,7 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 	s.watch[in.ID] = ch
 	s.watchLock.Unlock()
 
-	labels := prometheus.Labels{"method": "Watch", "op": "push"}
+	labels := prometheus.Labels{"method": "Watch", "op": "watch"}
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
