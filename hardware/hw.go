@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"inet.af/netaddr"
@@ -17,9 +18,10 @@ type mac string
 
 // Hardware is the interface to the in memory DB of hardware objects
 type Hardware struct {
-	gauge prometheus.Gauge
-	mu    sync.RWMutex
-	hw    map[id]struct {
+	gauge  prometheus.Gauge
+	logger *log.Logger
+	mu     sync.RWMutex
+	hw     map[id]struct {
 		j    string
 		ips  map[netaddr.IP]bool
 		macs map[mac]bool
@@ -240,5 +242,12 @@ func (h *Hardware) ByMAC(v string) (string, error) {
 func Gauge(g prometheus.Gauge) Option {
 	return func(h *Hardware) {
 		h.gauge = g
+	}
+}
+
+// Logger will set the logger used to log non-error but exceptional things
+func Logger(l *log.Logger) Option {
+	return func(h *Hardware) {
+		h.logger = l
 	}
 }
