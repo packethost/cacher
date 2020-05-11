@@ -39,8 +39,10 @@ func TestAdd(t *testing.T) {
 		}{
 			{id: uuid.New().String(), j: `{"id":"%s","instance":{"ip_addresses":[{"address":"192.168.0.1"}]}}`, n: 1},
 			{id: uuid.New().String(), j: `{"id":"%s","instance":{"ip_addresses":[{"address":"192.168.0.1"},{"address":"192.168.0.2"}]}}`, n: 2},
+			{id: uuid.New().String(), j: `{"id":"%s","instance":{"ip_addresses":[{"address":"192.168.0.1"},{"fubar":true}]}}`, n: 1},
 			{id: uuid.New().String(), j: `{"id":"%s","ip_addresses":[{"address":"192.168.0.1"}]}`, n: 1},
 			{id: uuid.New().String(), j: `{"id":"%s","ip_addresses":[{"address":"192.168.0.1"},{"address":"192.168.0.2"}]}`, n: 2},
+			{id: uuid.New().String(), j: `{"id":"%s","ip_addresses":[{"address":"192.168.0.1"},{"fubar":true}]}`, n: 1},
 			{id: uuid.New().String(), j: `{"id":"%s","instance":{"ip_addresses":[{"address":"192.168.0.1"},{"address":"192.168.0.2"}]},"ip_addresses":[{"address":"192.168.1.1"},{"address":"192.168.1.2"}]}`, n: 4},
 		} {
 			hw := New()
