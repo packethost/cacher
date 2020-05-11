@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,6 +142,24 @@ func TestAdd(t *testing.T) {
 		assert.Len(hw.hw, 1)
 		assert.Len(hw.byMAC, 1)
 	})
+}
+
+func TestGauge(t *testing.T) {
+	assert := require.New(t)
+
+	g := prometheus.NewGauge(prometheus.GaugeOpts{})
+	assert.Equal(0, int(testutil.ToFloat64(g)))
+
+	hw := New(Gauge(g))
+	id, _ := hw.Add(fmt.Sprintf(`{"id":"%s"}`, uuid.New().String()))
+	assert.Equal(1, int(testutil.ToFloat64(g)))
+	hw.Add(fmt.Sprintf(`{"id":"%s"}`, uuid.New().String()))
+	assert.Equal(2, int(testutil.ToFloat64(g)))
+	hw.Add(fmt.Sprintf(`{"id":"%s"}`, id))
+	assert.Equal(2, int(testutil.ToFloat64(g)))
+	hw.Add(fmt.Sprintf(`{"id":"%s", "state":"deleted"}`, id))
+	assert.Equal(1, int(testutil.ToFloat64(g)))
+
 }
 
 func TestAll(t *testing.T) {

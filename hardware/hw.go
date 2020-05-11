@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"inet.af/netaddr"
 )
 
@@ -16,8 +17,9 @@ type mac string
 
 // Hardware is the interface to the in memory DB of hardware objects
 type Hardware struct {
-	mu sync.RWMutex
-	hw map[id]struct {
+	gauge prometheus.Gauge
+	mu    sync.RWMutex
+	hw    map[id]struct {
 		j    string
 		ips  map[netaddr.IP]bool
 		macs map[mac]bool
@@ -44,9 +46,13 @@ type hardware struct {
 	} `json:"network_ports"`
 }
 
+// The Option type describes functions that operate on Hardeare during New.
+// It is a convenience type to make it easier for callers to configure options for Hardware.
+type Option func(*Hardware)
+
 // New will return an initialized Hardware struct
-func New() *Hardware {
-	return &Hardware{
+func New(options ...Option) *Hardware {
+	h := &Hardware{
 		hw: map[id]struct {
 			j    string
 			ips  map[netaddr.IP]bool
@@ -55,6 +61,10 @@ func New() *Hardware {
 		byIP:  map[netaddr.IP]id{},
 		byMAC: map[mac]id{},
 	}
+	for _, opt := range options {
+		opt(h)
+	}
+	return h
 }
 
 // Add inserts a new hardware object into the database, overriding any pre-existing values.
@@ -73,11 +83,16 @@ func (h *Hardware) Add(j string) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	og := h.hw[id]
+	og, ok := h.hw[id]
 	ng := h.hw[id]
 	ng.j = j
 	ng.ips = map[netaddr.IP]bool{}
 	ng.macs = map[mac]bool{}
+
+	change := 1
+	if ok {
+		change = 0
+	}
 
 	if hw.State == "deleted" {
 		hw.IPs = nil
@@ -142,7 +157,16 @@ func (h *Hardware) Add(j string) (string, error) {
 	if hw.State != "deleted" {
 		h.hw[id] = ng
 	} else {
+		change = -1
 		delete(h.hw, id)
+	}
+
+	if h.gauge != nil {
+		if change == 1 {
+			h.gauge.Inc()
+		} else if change == -1 {
+			h.gauge.Dec()
+		}
 	}
 
 	return string(id), nil
@@ -201,4 +225,11 @@ func (h *Hardware) ByMAC(v string) (string, error) {
 	}
 	id := h.byMAC[mac(m.String())]
 	return h.hw[id].j, nil
+}
+
+// Gauge will set the gauge used to track db size metric
+func Gauge(g prometheus.Gauge) Option {
+	return func(h *Hardware) {
+		h.gauge = g
+	}
 }

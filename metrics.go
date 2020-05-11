@@ -6,51 +6,53 @@ import (
 )
 
 var (
-	cacheDuration prometheus.ObserverVec
-	cacheErrors   *prometheus.CounterVec
-	cacheHits     *prometheus.CounterVec
-	cacheInFlight *prometheus.GaugeVec
-	cacheStalls   *prometheus.CounterVec
-	cacheTotals   *prometheus.CounterVec
+	cacheCountTotal prometheus.Gauge
+	cacheDuration   prometheus.ObserverVec
+	cacheErrors     *prometheus.CounterVec
+	cacheHits       *prometheus.CounterVec
+	cacheInFlight   *prometheus.GaugeVec
+	cacheStalls     *prometheus.CounterVec
+	cacheTotals     *prometheus.CounterVec
 
 	ingestCount    *prometheus.CounterVec
-	ingestErrors   *prometheus.CounterVec
+	ingestDone     prometheus.Counter
 	ingestDuration *prometheus.GaugeVec
+	ingestErrors   *prometheus.CounterVec
+	ingestRunning  prometheus.Counter
 
 	watchMissTotal prometheus.Counter
 )
 
 func setupMetrics(facility string) {
-	curryLabels := prometheus.Labels{
-		"service":  "cacher",
-		"facility": facility,
-	}
-
+	cacheCountTotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "cache_count_total",
+		Help: "Number of in devices in memory.",
+	})
 	cacheDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "cache_ops_duration_seconds",
 		Help:    "Duration of cache operations",
 		Buckets: prometheus.LinearBuckets(.01, .1, 10),
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
 	cacheErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "cache_ops_errors_total",
 		Help: "Number of cache errors.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
 	cacheHits = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "cache_hit_total",
 		Help: "Number of cache hits.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
 	cacheInFlight = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "cache_ops_current_total",
 		Help: "Number of in flight cache requests.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
 	cacheStalls = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "cache_stall_total",
 		Help: "Number of cache stalled due to DB.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
 	cacheTotals = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "cache_ops_total",
 		Help: "Number of cache ops.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
 
 	logger.Info("initializing label values")
 	var labels []prometheus.Labels
@@ -89,15 +91,23 @@ func setupMetrics(facility string) {
 	ingestCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ingest_op_count_total",
 		Help: "Number of attempts made to ingest facility data.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
+	ingestDone = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ingest_done",
+		Help: "Reports whether ingest is done",
+	})
 	ingestDuration = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ingest_op_duration_seconds",
 		Help: "Duration of successful ingestion actions while attempting to ingest facility data.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
 	ingestErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ingest_error_count_total",
 		Help: "Number of errors occurred attempting to ingest facility data.",
-	}, []string{"service", "facility", "method", "op"}).MustCurryWith(curryLabels)
+	}, []string{"method", "op"})
+	ingestRunning = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ingest_running",
+		Help: "Reports whether ingest is running",
+	})
 	labels = []prometheus.Labels{
 		{"method": "Ingest", "op": ""},
 		{"method": "Ingest", "op": "fetch"},

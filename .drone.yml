@@ -40,8 +40,8 @@ steps:
 
   - name: publish
     image: plugins/docker
-    registry: quay.io
     settings:
+      registry: quay.io
       repo: quay.io/packet/cacher
       tags:
         - ${DRONE_BRANCH/\//-}
