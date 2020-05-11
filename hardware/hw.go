@@ -71,7 +71,7 @@ func New(options ...Option) *Hardware {
 
 // Add inserts a new hardware object into the database, overriding any pre-existing values.
 // If state == deleted Add will delete the the object from the db.
-// API currently has a bug where it sends invalid ip_address objects where the address (and others) is missing, we skip this case and continue processing.
+// API currently has a bug where it sends invalid ip_address objects where the address (and others) is missing, we log this case (if logger is configured) and continue processing.
 func (h *Hardware) Add(j string) (string, error) {
 	hw := hardware{}
 	err := json.Unmarshal([]byte(j), &hw)
@@ -105,6 +105,9 @@ func (h *Hardware) Add(j string) (string, error) {
 
 	for _, ip := range hw.IPs {
 		if ip.Address == "" {
+			if h.logger != nil {
+				h.logger.With("json", j).Error(errors.New("missing an ip address"))
+			}
 			// TODO: remove this behavior when api is updated
 			continue
 		}
@@ -122,6 +125,9 @@ func (h *Hardware) Add(j string) (string, error) {
 	}
 	for _, ip := range hw.Instance.IPs {
 		if ip.Address == "" {
+			if h.logger != nil {
+				h.logger.With("json", j).Error(errors.New("missing an ip address"))
+			}
 			// TODO: remove this behavior when api is updated
 			continue
 		}
