@@ -129,6 +129,7 @@ func copyInEach(ctx context.Context, hw *hardware.Hardware, data []map[string]in
 
 		_, err = hw.Add(string(q))
 		if err != nil {
+			logger.With("json", string(q)).Error(err)
 			return err
 		}
 	}
@@ -177,7 +178,7 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 		if err := copyin(ctx, s.hw, ch); err != nil {
 			labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
 			ingestErrors.With(labels).Inc()
-			logger.Error(err)
+			// logging is already taken care of
 
 			if ctx.Err() == context.Canceled {
 				return
