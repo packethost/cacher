@@ -151,6 +151,13 @@ func (h *Hardware) Add(j string) (string, error) {
 	}
 
 	for _, port := range hw.Ports {
+		if port.Data.MAC == "" {
+			if h.logger != nil {
+				h.logger.With("json", j).Error(errors.New("missing a mac address"))
+			}
+			// TODO: remove this behavior when api is updated
+			continue
+		}
 		m, err := net.ParseMAC(port.Data.MAC)
 		if err != nil {
 			return "", errors.Wrap(err, "failed to parse mac")
@@ -252,8 +259,8 @@ func Gauge(g prometheus.Gauge) Option {
 }
 
 // Logger will set the logger used to log non-error but exceptional things
-func Logger(l *log.Logger) Option {
+func Logger(l log.Logger) Option {
 	return func(h *Hardware) {
-		h.logger = l
+		h.logger = &l
 	}
 }

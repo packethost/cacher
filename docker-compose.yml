@@ -15,3 +15,12 @@ services:
     volumes:
       - ./certs:/certs
 
+  cli:
+    build: cmd/cacherc
+    command: sleep 60d
+    environment:
+      FACILITY: ${FACILITY:-lab1}
+      CACHER_CERT_URL: http://cacher:42112/cert
+      CACHER_GRPC_AUTHORITY: cacher:42111
+    links:
+      - server:cacher

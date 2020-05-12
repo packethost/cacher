@@ -112,7 +112,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, facility string, err
 		modT:   modT,
 		packet: client,
 		quit:   ctx.Done(),
-		hw:     hardware.New(hardware.Gauge(cacheCountTotal)),
+		hw:     hardware.New(hardware.Gauge(cacheCountTotal), hardware.Logger(logger.Package("hardware"))),
 		watch:  map[string]chan string{},
 	}
 

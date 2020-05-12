@@ -65,6 +65,8 @@ func TestAdd(t *testing.T) {
 			{id: uuid.New().String(), j: `{"id":"%s","network_ports":[{"data":{"mac":"00:00:00:00:0a:01"}}]}`, n: 1},
 			{id: uuid.New().String(), j: `{"id":"%s","network_ports":[{"data":{"mac":"00:00:00:00:0A:01"}}]}`, n: 1},
 			{id: uuid.New().String(), j: `{"id":"%s","network_ports":[{"data":{"mac":"00:00:00:00:0A:01"}},{"data":{"mac":"00:00:00:00:00:02"}}]}`, n: 2},
+			{id: uuid.New().String(), j: `{"id":"%s","network_ports":[{"data":{"mac":"00:00:00:00:0A:01"}},{"data":{"mac":""}}]}`, n: 1},
+			{id: uuid.New().String(), j: `{"id":"%s","network_ports":[{"data":{"mac":"00:00:00:00:0A:01"}},{"data":{"mac":null}}]}`, n: 1},
 		} {
 			hw := New()
 			id, err := hw.Add(fmt.Sprintf(test.j, test.id))
