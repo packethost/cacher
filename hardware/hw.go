@@ -151,6 +151,13 @@ func (h *Hardware) Add(j string) (string, error) {
 	}
 
 	for _, port := range hw.Ports {
+		if port.Data.MAC == "" {
+			if h.logger != nil {
+				h.logger.With("json", j).Error(errors.New("missing a mac address"))
+			}
+			// TODO: remove this behavior when api is updated
+			continue
+		}
 		m, err := net.ParseMAC(port.Data.MAC)
 		if err != nil {
 			return "", errors.Wrap(err, "failed to parse mac")
