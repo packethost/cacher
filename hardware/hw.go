@@ -252,8 +252,8 @@ func Gauge(g prometheus.Gauge) Option {
 }
 
 // Logger will set the logger used to log non-error but exceptional things
-func Logger(l *log.Logger) Option {
+func Logger(l log.Logger) Option {
 	return func(h *Hardware) {
-		h.logger = l
+		h.logger = &l
 	}
 }
