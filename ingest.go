@@ -178,6 +178,7 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 		if err := copyin(ctx, s.hw, ch); err != nil {
 			labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
 			ingestErrors.With(labels).Inc()
+
 			// logging is already taken care of
 
 			if ctx.Err() == context.Canceled {
