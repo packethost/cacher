@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"inet.af/netaddr"
@@ -17,9 +18,10 @@ type mac string
 
 // Hardware is the interface to the in memory DB of hardware objects
 type Hardware struct {
-	gauge prometheus.Gauge
-	mu    sync.RWMutex
-	hw    map[id]struct {
+	gauge  prometheus.Gauge
+	logger *log.Logger
+	mu     sync.RWMutex
+	hw     map[id]struct {
 		j    string
 		ips  map[netaddr.IP]bool
 		macs map[mac]bool
@@ -69,6 +71,7 @@ func New(options ...Option) *Hardware {
 
 // Add inserts a new hardware object into the database, overriding any pre-existing values.
 // If state == deleted Add will delete the the object from the db.
+// API currently has a bug where it sends invalid ip_address objects where the address (and others) is missing, we log this case (if logger is configured) and continue processing.
 func (h *Hardware) Add(j string) (string, error) {
 	hw := hardware{}
 	err := json.Unmarshal([]byte(j), &hw)
@@ -101,6 +104,13 @@ func (h *Hardware) Add(j string) (string, error) {
 	}
 
 	for _, ip := range hw.IPs {
+		if ip.Address == "" {
+			if h.logger != nil {
+				h.logger.With("json", j).Error(errors.New("missing an ip address"))
+			}
+			// TODO: remove this behavior when api is updated
+			continue
+		}
 		nIP, ok := netaddr.FromStdIP(net.ParseIP(ip.Address))
 		if !ok {
 			return "", errors.New("failed to parse ip")
@@ -114,6 +124,13 @@ func (h *Hardware) Add(j string) (string, error) {
 
 	}
 	for _, ip := range hw.Instance.IPs {
+		if ip.Address == "" {
+			if h.logger != nil {
+				h.logger.With("json", j).Error(errors.New("missing an ip address"))
+			}
+			// TODO: remove this behavior when api is updated
+			continue
+		}
 		nIP, ok := netaddr.FromStdIP(net.ParseIP(ip.Address))
 		if !ok {
 			return "", errors.New("failed to parse ip")
@@ -231,5 +248,12 @@ func (h *Hardware) ByMAC(v string) (string, error) {
 func Gauge(g prometheus.Gauge) Option {
 	return func(h *Hardware) {
 		h.gauge = g
+	}
+}
+
+// Logger will set the logger used to log non-error but exceptional things
+func Logger(l *log.Logger) Option {
+	return func(h *Hardware) {
+		h.logger = l
 	}
 }
