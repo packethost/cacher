@@ -20,6 +20,7 @@ import (
 	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
+	"github.com/packethost/pkg/env"
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -32,7 +33,6 @@ var (
 	gitRev         = "unknown"
 	gitRevJSON     []byte
 	logger         log.Logger
-	grpcListenAddr = ":42111"
 	httpListenAddr = ":42112"
 	StartTime      = time.Now()
 )
@@ -121,7 +121,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, facility string, err
 
 	go func() {
 		logger.Info("serving grpc")
-		lis, err := net.Listen("tcp", grpcListenAddr)
+		lis, err := net.Listen("tcp", ":"+env.Get("GRPC_PORT", "42111"))
 		if err != nil {
 			err = errors.Wrap(err, "failed to listen")
 			logger.Error(err)
@@ -225,10 +225,6 @@ func main() {
 
 	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_http"); ok {
 		httpListenAddr = ":" + bindPort
-	}
-
-	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_grpc"); ok {
-		grpcListenAddr = ":" + bindPort
 	}
 
 	ctx, closer := context.WithCancel(context.Background())
