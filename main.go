@@ -3,9 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,16 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
 	"github.com/packethost/pkg/env"
+	"github.com/packethost/pkg/grpc"
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -43,69 +39,31 @@ func mustParseURL(s string) *url.URL {
 }
 
 func setupGRPC(ctx context.Context, client *packngo.Client, facility string, errCh chan<- error) *server {
+	cert := []byte(env.Get("CACHER_TLS_CERT"))
 
-	params := []grpc.ServerOption{
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-	}
-
-	var certPEM []byte
-	if cert := env.Get("CACHER_TLS_CERT"); cert != "" {
-		certPEM = []byte(cert)
-	} else {
-		cert = env.Get("GRPC_CERT")
-		if cert == "" {
-			err := errors.New("GRPC_CERT missing from environment")
-			logger.Fatal(err)
-			panic(err)
-		}
-		certPEM = []byte(cert)
-
-		key := env.Get("GRPC_KEY")
-		if key == "" {
-			err := errors.New("GRPC_KEY missing from environment")
-			logger.Fatal(err)
-			panic(err)
-		}
-
-		kp, err := tls.X509KeyPair([]byte(cert), []byte(key))
-		if err != nil {
-			err = errors.Wrap(err, "failed to ingest TLS files")
-			logger.Error(err)
-			panic(err)
-		}
-
-		params = append(params, grpc.Creds(credentials.NewServerTLSFromCert(&kp)))
-	}
-
-	s := grpc.NewServer(params...)
 	server := &server{
-		cert:   certPEM,
+		cert:   cert,
 		modT:   StartTime,
 		packet: client,
 		quit:   ctx.Done(),
 		hw:     hardware.New(hardware.Gauge(cacheCountTotal), hardware.Logger(logger.Package("hardware"))),
 		watch:  map[string]chan string{},
 	}
-
-	cacher.RegisterCacherServer(s, server)
-	grpc_prometheus.Register(s)
+	s, err := grpc.NewServer(logger, func(s *grpc.Server) {
+		cacher.RegisterCacherServer(s.Server(), server)
+	})
+	if err != nil {
+		logger.Fatal(errors.Wrap(err, "setup grpc server"))
+	}
 
 	go func() {
 		logger.Info("serving grpc")
-		lis, err := net.Listen("tcp", ":"+env.Get("GRPC_PORT", "42111"))
-		if err != nil {
-			err = errors.Wrap(err, "failed to listen")
-			logger.Error(err)
-			panic(err)
-		}
-
-		errCh <- s.Serve(lis)
+		errCh <- s.Serve()
 	}()
 
 	go func() {
 		<-ctx.Done()
-		s.GracefulStop()
+		s.Server().GracefulStop()
 	}()
 
 	return server
