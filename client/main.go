@@ -51,7 +51,7 @@ func New(facility string) (cacher.CacherClient, error) {
 	cp := x509.NewCertPool()
 	ok := cp.AppendCertsFromPEM(certs)
 	if !ok {
-		return nil, errors.Wrap(err, "parse cert")
+		return nil, errors.New("parsing cert")
 	}
 	creds := credentials.NewClientTLSFromCert(cp, "")
 
