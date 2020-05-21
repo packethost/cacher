@@ -4,7 +4,8 @@ ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "/cacher" ]
 ENV GRPC_PORT=42111
 EXPOSE $GRPC_PORT
-EXPOSE 42112
+ENV HTTP_PORT=42112
+EXPOSE $HTTP_PORT
 
 RUN apk add --no-cache --update --upgrade ca-certificates
 RUN apk add --no-cache --update --upgrade --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing cfssl

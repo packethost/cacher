@@ -29,12 +29,11 @@ import (
 )
 
 var (
-	api            = mustParseURL("https://api.packet.net/")
-	gitRev         = "unknown"
-	gitRevJSON     []byte
-	logger         log.Logger
-	httpListenAddr = ":42112"
-	StartTime      = time.Now()
+	api        = mustParseURL("https://api.packet.net/")
+	gitRev     = "unknown"
+	gitRevJSON []byte
+	logger     log.Logger
+	StartTime  = time.Now()
 )
 
 func mustParseURL(s string) *url.URL {
@@ -190,7 +189,7 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 	http.HandleFunc("/version", versionHandler)
 	http.HandleFunc("/_packet/healthcheck", healthCheckHandler)
 	srv := &http.Server{
-		Addr: httpListenAddr,
+		Addr: ":" + env.Get("HTTP_PORT", "42112"),
 	}
 	go func() {
 		logger.Info("serving http")
@@ -222,10 +221,6 @@ func main() {
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
-
-	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_http"); ok {
-		httpListenAddr = ":" + bindPort
-	}
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
