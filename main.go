@@ -3,38 +3,31 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
-	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
+	"github.com/packethost/pkg/env"
+	"github.com/packethost/pkg/grpc"
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 var (
-	api            = mustParseURL("https://api.packet.net/")
-	gitRev         = "unknown"
-	gitRevJSON     []byte
-	logger         log.Logger
-	grpcListenAddr = ":42111"
-	httpListenAddr = ":42112"
-	StartTime      = time.Now()
+	api        = mustParseURL("https://api.packet.net/")
+	gitRev     = "unknown"
+	gitRevJSON []byte
+	logger     log.Logger
+	StartTime  = time.Now()
 )
 
 func mustParseURL(s string) *url.URL {
@@ -46,94 +39,31 @@ func mustParseURL(s string) *url.URL {
 }
 
 func setupGRPC(ctx context.Context, client *packngo.Client, facility string, errCh chan<- error) *server {
-	var (
-		certPEM []byte
-		modT    time.Time
-	)
+	cert := []byte(env.Get("CACHER_TLS_CERT"))
 
-	params := []grpc.ServerOption{
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-	}
-
-	if cert := os.Getenv("CACHER_TLS_CERT"); cert != "" {
-		certPEM = []byte(cert)
-		modT = time.Now()
-	} else {
-		certsDir := os.Getenv("CACHER_CERTS_DIR")
-		if certsDir == "" {
-			certsDir = "/certs/" + facility
-		}
-		if !strings.HasSuffix(certsDir, "/") {
-			certsDir += "/"
-		}
-
-		certFile, err := os.Open(certsDir + "bundle.pem")
-		if err != nil {
-			err = errors.Wrap(err, "failed to open TLS cert")
-			logger.Error(err)
-			panic(err)
-		}
-
-		if stat, err := certFile.Stat(); err != nil {
-			err = errors.Wrap(err, "failed to stat TLS cert")
-			logger.Error(err)
-			panic(err)
-		} else {
-			modT = stat.ModTime()
-		}
-
-		certPEM, err = ioutil.ReadAll(certFile)
-		if err != nil {
-			err = errors.Wrap(err, "failed to read TLS cert")
-			logger.Error(err)
-			panic(err)
-		}
-		keyPEM, err := ioutil.ReadFile(certsDir + "server-key.pem")
-		if err != nil {
-			err = errors.Wrap(err, "failed to read TLS key")
-			logger.Error(err)
-			panic(err)
-		}
-
-		cert, err := tls.X509KeyPair(certPEM, keyPEM)
-		if err != nil {
-			err = errors.Wrap(err, "failed to ingest TLS files")
-			logger.Error(err)
-			panic(err)
-		}
-
-		params = append(params, grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
-	}
-
-	s := grpc.NewServer(params...)
 	server := &server{
-		cert:   certPEM,
-		modT:   modT,
+		cert:   cert,
+		modT:   StartTime,
 		packet: client,
 		quit:   ctx.Done(),
 		hw:     hardware.New(hardware.Gauge(cacheCountTotal), hardware.Logger(logger.Package("hardware"))),
 		watch:  map[string]chan string{},
 	}
-
-	cacher.RegisterCacherServer(s, server)
-	grpc_prometheus.Register(s)
+	s, err := grpc.NewServer(logger, func(s *grpc.Server) {
+		cacher.RegisterCacherServer(s.Server(), server)
+	})
+	if err != nil {
+		logger.Fatal(errors.Wrap(err, "setup grpc server"))
+	}
 
 	go func() {
 		logger.Info("serving grpc")
-		lis, err := net.Listen("tcp", grpcListenAddr)
-		if err != nil {
-			err = errors.Wrap(err, "failed to listen")
-			logger.Error(err)
-			panic(err)
-		}
-
-		errCh <- s.Serve(lis)
+		errCh <- s.Serve()
 	}()
 
 	go func() {
 		<-ctx.Done()
-		s.GracefulStop()
+		s.Server().GracefulStop()
 	}()
 
 	return server
@@ -190,7 +120,7 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 	http.HandleFunc("/version", versionHandler)
 	http.HandleFunc("/_packet/healthcheck", healthCheckHandler)
 	srv := &http.Server{
-		Addr: httpListenAddr,
+		Addr: ":" + env.Get("HTTP_PORT", "42112"),
 	}
 	go func() {
 		logger.Info("serving http")
@@ -222,14 +152,6 @@ func main() {
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
-
-	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_http"); ok {
-		httpListenAddr = ":" + bindPort
-	}
-
-	if bindPort, ok := os.LookupEnv("NOMAD_PORT_internal_grpc"); ok {
-		grpcListenAddr = ":" + bindPort
-	}
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
