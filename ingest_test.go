@@ -28,6 +28,7 @@ func TestMain(m *testing.M) {
 
 func TestFetchFacility(t *testing.T) {
 	os.Setenv("CACHER_CONCURRENT_FETCHES", "1")
+	os.Unsetenv("CACHER_FETCH_PER_PAGE")
 
 	logger = log.Test(t, "github.com/packethost/cacher")
 	defer gock.Off()
