@@ -175,15 +175,14 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 	cacheInFlight.With(labels).Inc()
 	defer cacheInFlight.With(labels).Dec()
 
-	disconnect := true
 	defer func() {
-		if !disconnect {
-			return
-		}
 		s.watchLock.Lock()
-		delete(s.watch, in.ID)
+		// Only delete and close if the existing channel matches
+		if s.watch[in.ID] == ch {
+			delete(s.watch, in.ID)
+			close(ch)
+		}
 		s.watchLock.Unlock()
-		close(ch)
 	}()
 
 	hw := &cacher.Hardware{}
@@ -197,7 +196,6 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 			return status.Error(codes.OK, "client disconnected")
 		case j, ok := <-ch:
 			if !ok {
-				disconnect = false
 				l.Info("we are being evicted, goodbye")
 				// ch was replaced and already closed
 				return status.Error(codes.Unknown, "evicted")
