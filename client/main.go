@@ -1,6 +1,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -40,10 +41,17 @@ func New(facility string) (cacher.CacherClient, error) {
 	var securityOption grpc.DialOption
 
 	insecure := os.Getenv("CACHER_INSECURE")
+	verify := os.Getenv("CACHER_VERIFY")
 
 	if isTrue(insecure) {
 		securityOption = grpc.WithInsecure()
+	} else if verify != "" {
+		creds := credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: !isTrue(verify),
+		})
+		securityOption = grpc.WithTransportCredentials(creds)
 	} else {
+		// If insecure is false and verify is not defined, fallback to old method.
 		certURL := os.Getenv("CACHER_CERT_URL")
 		if certURL == "" {
 			auth, err := lookupAuthority("http", facility)
