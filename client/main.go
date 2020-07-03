@@ -7,10 +7,10 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/packethost/cacher/protos/cacher"
+	"github.com/packethost/pkg/env"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -40,19 +40,21 @@ func New(facility string) (cacher.CacherClient, error) {
 
 	var securityOption grpc.DialOption
 
-	insecure := os.Getenv("CACHER_INSECURE")
-	verify := os.Getenv("CACHER_VERIFY")
+	useTLS := env.Bool("CACHER_USE_TLS", true)
 
-	if isTrue(insecure) {
+	// Must be string to check whether or not it has been defined.
+	verifyTLS := env.Get("CACHER_TLS_VERIFY")
+
+	if !useTLS {
 		securityOption = grpc.WithInsecure()
-	} else if verify != "" {
+	} else if verifyTLS != "" {
 		creds := credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: !isTrue(verify),
+			InsecureSkipVerify: !isTrue(verifyTLS),
 		})
 		securityOption = grpc.WithTransportCredentials(creds)
 	} else {
 		// If insecure is false and verify is not defined, fallback to old method.
-		certURL := os.Getenv("CACHER_CERT_URL")
+		certURL := env.Get("CACHER_CERT_URL")
 		if certURL == "" {
 			auth, err := lookupAuthority("http", facility)
 			if err != nil {
@@ -82,7 +84,7 @@ func New(facility string) (cacher.CacherClient, error) {
 	}
 
 	var err error
-	grpcAuthority := os.Getenv("CACHER_GRPC_AUTHORITY")
+	grpcAuthority := env.Get("CACHER_GRPC_AUTHORITY")
 	if grpcAuthority == "" {
 		grpcAuthority, err = lookupAuthority("grpc", facility)
 		if err != nil {
