@@ -10,6 +10,10 @@ That is all.
 
 Enter into the cmd/cacher folder and execute `go build .`
 
+or
+
+From the root directory execute `make cli`
+
 ### Example commands
 
 `cacherc -f dfw2 all`
