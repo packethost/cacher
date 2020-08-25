@@ -13,7 +13,7 @@ require (
 	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6
-	github.com/packethost/pkg v0.0.0-20200422151836-417b049b48b1
+	github.com/packethost/pkg v0.0.0-20200807181840-a2cb6bbc41b9
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v1.6.0

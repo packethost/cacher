@@ -96,6 +96,8 @@ github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6 h1:rEwKdcnAFG
 github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6/go.mod h1:otzZQXgoO96RTzDB/Hycg0qZcXZsWJGJRSXbmEIJ+4M=
 github.com/packethost/pkg v0.0.0-20200422151836-417b049b48b1 h1:iDclrzE6G/J0AAtTYHiOsdNA5t78/KfRWM0a0k2cMpE=
 github.com/packethost/pkg v0.0.0-20200422151836-417b049b48b1/go.mod h1:GkI1SaiEDaO+JsKjtcMsn/eDSU4/GD8CMin2b03fQvE=
+github.com/packethost/pkg v0.0.0-20200807181840-a2cb6bbc41b9 h1:BikdQN3TbmCk9uMYgmy6vt3Wzefn7D3a1n2SiJN1J/s=
+github.com/packethost/pkg v0.0.0-20200807181840-a2cb6bbc41b9/go.mod h1:GSv7cTtIjns4yc0pyajaM1RE/KE4djJONoblFIRDrxA=
 github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pkg/errors v0.8.0 h1:WdK/asTD0HN+q6hsWO3/vpuAkAr+tw6aNJNDFFf0+qw=
