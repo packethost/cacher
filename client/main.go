@@ -28,33 +28,41 @@ func New(facility string) (cacher.CacherClient, error) {
 
 		return fmt.Sprintf("%s:%d", strings.TrimSuffix(addrs[0].Target, "."), addrs[0].Port), nil
 	}
+	var securityOption grpc.DialOption
 
-	certURL := env.Get("CACHER_CERT_URL")
-	if certURL == "" {
-		auth, err := lookupAuthority("http", facility)
-		if err != nil {
-			return nil, err
+	useTLS := env.Bool("CACHER_USE_TLS", true)
+	if !useTLS {
+		securityOption = grpc.WithInsecure()
+	} else {
+		certURL := env.Get("CACHER_CERT_URL")
+		if certURL == "" {
+			auth, err := lookupAuthority("http", facility)
+			if err != nil {
+				return nil, err
+			}
+			certURL = "https://" + auth + "/cert"
 		}
-		certURL = "https://" + auth + "/cert"
-	}
-	resp, err := http.Get(certURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "fetch cert")
-	}
-	defer resp.Body.Close()
+		resp, err := http.Get(certURL)
+		if err != nil {
+			return nil, errors.Wrap(err, "fetch cert")
+		}
+		defer resp.Body.Close()
 
-	certs, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "read cert")
+		certs, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "read cert")
+		}
+
+		cp := x509.NewCertPool()
+		ok := cp.AppendCertsFromPEM(certs)
+		if !ok {
+			return nil, errors.New("parsing cert")
+		}
+		creds := credentials.NewClientTLSFromCert(cp, "")
+		securityOption = grpc.WithTransportCredentials(creds)
 	}
 
-	cp := x509.NewCertPool()
-	ok := cp.AppendCertsFromPEM(certs)
-	if !ok {
-		return nil, errors.New("parsing cert")
-	}
-	creds := credentials.NewClientTLSFromCert(cp, "")
-
+	var err error
 	grpcAuthority := env.Get("CACHER_GRPC_AUTHORITY")
 	if grpcAuthority == "" {
 		grpcAuthority, err = lookupAuthority("grpc", facility)
@@ -62,7 +70,8 @@ func New(facility string) (cacher.CacherClient, error) {
 			return nil, err
 		}
 	}
-	conn, err := grpc.Dial(grpcAuthority, grpc.WithTransportCredentials(creds))
+
+	conn, err := grpc.Dial(grpcAuthority, securityOption)
 	if err != nil {
 		return nil, errors.Wrap(err, "connect to cacher")
 	}
