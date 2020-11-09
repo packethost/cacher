@@ -82,6 +82,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	m = nil // "clear" out m so that json.Unmarshal doesn't mix in cacher and tinkerbell data layout in the same `m`
 	err = json.Unmarshal(b, &m)
 	if err != nil {
 		panic(err)
