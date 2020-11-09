@@ -9,7 +9,24 @@ import (
 	"github.com/tinkerbell/boots/packet"
 )
 
+const usage = `usage: cacher2tink
+
+Takes cacherc output on stdin, transforms into tinkerbell data model on stdout.
+
+
+Example:
+cacherc -f dc13 mac 1c:34:da:42:b8:34 | ./cacher2tink >tink.json
+`
+
 func main() {
+	if len(os.Args) > 1 {
+		fmt.Fprintln(os.Stderr, usage)
+		if len(os.Args) == 2 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
+
 	var m map[string]interface{}
 	err := json.NewDecoder(os.Stdin).Decode(&m)
 	if err != nil {
@@ -82,6 +99,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	m = nil // "clear" out m so that json.Unmarshal doesn't mix in cacher and tinkerbell data layout in the same `m`
 	err = json.Unmarshal(b, &m)
 	if err != nil {
 		panic(err)
