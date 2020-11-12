@@ -14,7 +14,7 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.0.2
 	github.com/stretchr/testify v1.4.0
-	github.com/tinkerbell/boots v0.0.0-20201106205515-ac617dfc809a
+	github.com/tinkerbell/boots v0.0.0-20201111172111-e81a291c4d02
 	google.golang.org/grpc v1.29.1
 	gopkg.in/h2non/gock.v1 v1.0.14
 	inet.af/netaddr v0.0.0-20200430175045-5aaf2097c7fc

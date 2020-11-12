@@ -210,6 +210,8 @@ github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81P
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/tinkerbell/boots v0.0.0-20201106205515-ac617dfc809a h1:Y/HO3WiJKopgwd7L+ipj10qKvhJ8XodoqCAV7I1D3zs=
 github.com/tinkerbell/boots v0.0.0-20201106205515-ac617dfc809a/go.mod h1:MbYQeDLFYlGkGhs5bF8MXrLi/705BKwz2O07Bx78kMM=
+github.com/tinkerbell/boots v0.0.0-20201111172111-e81a291c4d02 h1:GyEblpJ3Lai9zZCxYiI8aWAaQgM6V74wZ99EDVZPwsE=
+github.com/tinkerbell/boots v0.0.0-20201111172111-e81a291c4d02/go.mod h1:wchKOXajUbX9pbo/KJSuOFDVZ3EIgKSKxuGY1dlp6wI=
 github.com/tinkerbell/tftp-go v0.0.0-20200825172122-d9200358b6cd/go.mod h1:fIVwBIM3uQepwxarJe/ixO4KtVYcoXPIUBtVFK/OhY0=
 github.com/tinkerbell/tink v0.0.0-20200806104854-0f947d87c35f h1:zEKK3pMw8hB0BYkv0mIhJzhouh32v6/PwvMQBRCVmgk=
 github.com/tinkerbell/tink v0.0.0-20200806104854-0f947d87c35f/go.mod h1:5Kv1re+s/uSfE3vWsoOS+tKwZYwLrrPXgEXViTbEmv4=
