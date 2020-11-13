@@ -75,6 +75,14 @@ func main() {
 						ni.Netboot.AllowPXE = c.AllowPXE
 						ni.Netboot.AllowWorkflow = true
 					}
+					if p.Name == "ipmi0" {
+						ni.DHCP.IP = c.IPMI
+						family := 4
+						if ni.DHCP.IP.Address.To16() != nil {
+							family = 6
+						}
+						ni.DHCP.IP.Family = family
+					}
 					ifaces = append(ifaces, ni)
 				}
 				return ifaces
