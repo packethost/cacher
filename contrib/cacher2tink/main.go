@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/tinkerbell/boots/packet"
@@ -32,6 +33,9 @@ func main() {
 		var m map[string]interface{}
 		err := dec.Decode(&m)
 		if err != nil {
+			if err == io.EOF {
+				return
+			}
 			panic(err)
 		}
 		if m["instance"] == nil {
