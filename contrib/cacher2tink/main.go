@@ -127,6 +127,4 @@ func main() {
 			panic(err)
 		}
 	}
-
-	fmt.Println()
 }
