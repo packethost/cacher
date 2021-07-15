@@ -19,10 +19,5 @@ protos/cacher/cacher.pb.go: protos/cacher/cacher.proto
 test:
 	go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
 
-ifeq ($(CI),drone)
-run: ${server}
-	${server}
-else
 run: ${binaries}
 	docker-compose up --build server
-endif
