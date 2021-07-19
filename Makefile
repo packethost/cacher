@@ -16,14 +16,8 @@ protos/cacher/cacher.pb.go: protos/cacher/cacher.proto
 	go generate ./...
 	goimports -w $@
 
-ifeq ($(CI),drone)
-run: ${server}
-	${server}
 test:
 	go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
-else
+
 run: ${binaries}
 	docker-compose up --build server
-test:
-	docker-compose up test
-endif
