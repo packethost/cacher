@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/packethost/cacher/hardware"
+	"github.com/packethost/cacher/pkg/healthcheck"
 	"github.com/packethost/cacher/protos/cacher"
 	"github.com/packethost/packngo"
 	"github.com/packethost/pkg/env"
@@ -20,6 +21,8 @@ import (
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 var (
@@ -51,6 +54,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, facility string, err
 	}
 	s, err := grpc.NewServer(logger, func(s *grpc.Server) {
 		cacher.RegisterCacherServer(s.Server(), server)
+		grpc_health_v1.RegisterHealthServer(s.Server(), healthcheck.NewHealthChecker())
 	})
 	if err != nil {
 		logger.Fatal(errors.Wrap(err, "setup grpc server"))
