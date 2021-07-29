@@ -30,7 +30,7 @@ type server struct {
 	watch     map[string]chan string
 }
 
-//go:generate protoc -I protos/cacher protos/cacher/cacher.proto --go_out=plugins=grpc:protos/cacher
+//go:generate protoc -I protos/cacher protos/cacher/cacher.proto --go_opt=paths=source_relative --go_out=plugins=grpc:protos/cacher
 
 // Push implements cacher.CacherServer
 func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empty, error) {

@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	github.com/gammazero/workerpool v0.0.0-20200311205957-7b00833861c6
-	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6
@@ -24,6 +23,7 @@ require (
 	go.opentelemetry.io/otel/sdk v0.20.0
 	google.golang.org/grpc v1.39.0
 	google.golang.org/grpc/examples v0.0.0-20210728214646-ad0a2a847cdf // indirect
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/h2non/gock.v1 v1.0.14
 	inet.af/netaddr v0.0.0-20200430175045-5aaf2097c7fc
 )

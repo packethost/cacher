@@ -1,5 +1,6 @@
 syntax = "proto3";
 package cacher;
+option go_package = "github.com/packethost/cacher";
 
 service Cacher {
 	rpc Push (PushRequest) returns (Empty);
