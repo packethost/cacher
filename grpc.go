@@ -31,6 +31,8 @@ type server struct {
 }
 
 //go:generate protoc -I protos/cacher protos/cacher/cacher.proto --go_opt=paths=source_relative --go_out=plugins=grpc:protos/cacher
+// protoc's import ordering (currently) doesn't match goimport's expectations, so rewrite them on the fly
+//go:generate goimports -w protos/cacher/cacher.pb.go
 
 // Push implements cacher.CacherServer
 func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empty, error) {
