@@ -149,6 +149,9 @@ func main() {
 	logger = log
 	defer logger.Close()
 
+	otelShutdown := initOtel()
+	defer otelShutdown()
+
 	if url := os.Getenv("PACKET_API_URL"); url != "" && mustParseURL(url).String() != api.String() {
 		api = mustParseURL(url)
 	}
