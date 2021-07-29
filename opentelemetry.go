@@ -2,36 +2,30 @@ package main
 
 import (
 	"context"
-	"flag"
 	"io/ioutil"
 	"log"
 	"os"
 
+	"github.com/packethost/pkg/env"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
 	"go.opentelemetry.io/otel/exporters/stdout"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv"
 	"google.golang.org/grpc/credentials"
 )
 
-var (
-	otlpEndpoint string
-	otlpInsecure bool
-)
-
-func init() {
-	flag.StringVar(&otlpEndpoint, "otlp-endpoint", "", "endpoint to send OpenTelemetry tracing data to")
-	flag.BoolVar(&otlpInsecure, "otlp-insecure", false, "enable unencrpted/unauthenticated OTLP connections")
-}
-
 // initOtel sets up the OpenTelemetry plumbing so it's ready to use.
 // Returns a func() that encapuslates clean shutdown.
+// Configured via environment:
+// OTEL_EXPORTER_OTLP_ENDPOINT an OTLP endpoint URI or "stdout" to print tracing data to stdout
+// OTEL_EXPORTER_OTLP_INSECURE set to true to enable unencrypted OTLP (e.g. localhost collector)
 func initOtel() func() {
+	otlpEndpoint := env.Get("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otlpInsecure := env.Bool("OTEL_EXPORTER_OTLP_INSECURE")
 	ctx := context.Background()
 
 	// set the service name that will show up in tracing UIs
@@ -42,7 +36,7 @@ func initOtel() func() {
 	}
 
 	// might be OTLP, might be stdout (to dev null, to prevent errors when unconfigured)
-	var exporter trace.SpanExporter
+	var exporter sdktrace.SpanExporter
 
 	if otlpEndpoint != "" {
 		driverOpts := []otlpgrpc.Option{otlpgrpc.WithEndpoint(otlpEndpoint)}
