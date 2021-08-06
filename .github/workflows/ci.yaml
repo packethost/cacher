@@ -9,67 +9,71 @@ jobs:
     env:
       CGO_ENABLED: 0
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: '1.14'
-    - name: goimports
-      run: go get golang.org/x/tools/cmd/goimports && goimports -d . | (! grep .)
-    - name: go vet
-      run: go vet ./...
-#    - name: golangci-lint
-#      uses: golangci/golangci-lint-action@v2
-#      with:
-#        version: v1.31
-    - name: go test
-      run: go test -v ./...
-    - name: go test coverage
-      run: go test -coverprofile=coverage.txt ./...
-    - name: upload codecov
-      run: bash <(curl -s https://codecov.io/bash)
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - uses: cachix/install-nix-action@v13
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: nix-shell --run "echo OK"
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.16"
+      - name: goimports
+        run: go get golang.org/x/tools/cmd/goimports && goimports -d . | (! grep .)
+      - name: go vet
+        run: go vet ./...
+      #    - name: golangci-lint
+      #      uses: golangci/golangci-lint-action@v2
+      #      with:
+      #        version: v1.31
+      - name: go test
+        run: go test -v ./...
+      - name: go test coverage
+        run: go test -coverprofile=coverage.txt ./...
+      - name: upload codecov
+        run: bash <(curl -s https://codecov.io/bash)
   docker-images:
     name: push image to quay.io
     runs-on: ubuntu-latest
     needs: [validation]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: '1.14'
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v1
-    - name: Docker meta
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: quay.io/packet/cacher
-        tags: |
-          type=sha
-          type=ref,event=branch
-    - name: Login to Quay
-      uses: docker/login-action@v1
-      with:
-        registry: quay.io
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    - name: Cache Docker layers
-      uses: actions/cache@v2
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-cache
-        restore-keys: |
-          ${{ runner.os }}-cache
-    - name: Build and push Docker images
-      uses: docker/build-push-action@v2
-      with:
-        platforms: linux/amd64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache
-        builder: ${{ steps.buildx.outputs.name }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.16"
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: quay.io/packet/cacher
+          tags: |
+            type=sha
+            type=ref,event=branch
+      - name: Login to Quay
+        uses: docker/login-action@v1
+        with:
+          registry: quay.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-cache
+          restore-keys: |
+            ${{ runner.os }}-cache
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v2
+        with:
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          builder: ${{ steps.buildx.outputs.name }}
