@@ -21,6 +21,7 @@ import (
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/tobert/otel-init-go/otelinit"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -149,7 +150,7 @@ func main() {
 	logger = log
 	defer logger.Close()
 
-	otelShutdown := initOtel()
+	otelShutdown := otelinit.InitOpenTelemetry("cacher")
 	defer otelShutdown()
 
 	if url := os.Getenv("PACKET_API_URL"); url != "" && mustParseURL(url).String() != api.String() {
