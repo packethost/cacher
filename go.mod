@@ -16,6 +16,8 @@ require (
 	github.com/tinkerbell/boots v0.0.0-20201111172111-e81a291c4d02
 	github.com/tobert/otel-init-go v0.0.0-20210804183951-47b83e855e3b
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.22.0
+	go.opentelemetry.io/otel v1.0.0-RC2 // indirect
+	go.opentelemetry.io/otel/trace v1.0.0-RC2 // indirect
 	google.golang.org/grpc v1.39.0
 	google.golang.org/grpc/examples v0.0.0-20210728214646-ad0a2a847cdf // indirect
 	google.golang.org/protobuf v1.27.1

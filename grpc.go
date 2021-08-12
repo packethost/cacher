@@ -10,6 +10,8 @@ import (
 	"github.com/packethost/packngo"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -36,6 +38,7 @@ type server struct {
 
 // Push implements cacher.CacherServer
 func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empty, error) {
+	trace.SpanFromContext(ctx).AddEvent("push")
 	logger.Info("push")
 	labels := prometheus.Labels{"method": "Push", "op": ""}
 	cacheInFlight.With(labels).Inc()
@@ -69,6 +72,7 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 
 // Ingest implements cacher.CacherServer
 func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
+	trace.SpanFromContext(ctx).AddEvent("ingest")
 	logger.Info("ingest")
 	labels := prometheus.Labels{"method": "Ingest", "op": ""}
 	cacheInFlight.With(labels).Inc()
@@ -110,6 +114,7 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 
 // ByMAC implements cacher.CacherServer
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String("MAC", in.MAC))
 	return s.by("ByMAC", func() (string, error) {
 		return s.hw.ByMAC(in.MAC)
 	})
@@ -117,6 +122,7 @@ func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hard
 
 // ByIP implements cacher.CacherServer
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String("IP", in.IP))
 	return s.by("ByIP", func() (string, error) {
 		return s.hw.ByIP(in.IP)
 	})
@@ -124,6 +130,7 @@ func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardw
 
 // ByID implements cacher.CacherServer
 func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String("ID", in.ID))
 	return s.by("ByID", func() (string, error) {
 		return s.hw.ByID(in.ID)
 	})
