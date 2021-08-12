@@ -51,3 +51,15 @@ Usage:
 `cacherc -f iad1 mac ac:1f:6b:2d:33:48 | jq '.instance.ip_addresses[0].address'`
 
 `cacherc -f dfw2 id ac8eeb4e-a520-4582-b5b7-ea4fab6ebbd9 | jq `
+
+## OpenTelemetry
+
+OpenTelemetry hooks are enabled for gRPC so each gRPC transaction will generate spans and traces, as well as propagate
+any tracing information from clients to API.
+
+To export traces to an opentelemetry collector on localhost, set the following:
+
+```sh
+OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+OTEL_EXPORTER_OTLP_INSECURE=true
+```
