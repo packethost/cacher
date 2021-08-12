@@ -84,7 +84,7 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 		attribute.String("fetchFacility.path", api.Path),
 		attribute.String("fetchFacility.base.query", q.Encode()),
 		attribute.Int("CACHER_FETCH_PER_PAGE", perPage),
-		attribute.Int("fetchFacility.paging.total", total),
+		attribute.Int("fetchFacility.paging.total", int(total)),
 		attribute.Int("fetchFacility.paging.iterations", iterations),
 	)
 
