@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/url"
 	"strconv"
 	"sync"
@@ -13,14 +12,14 @@ import (
 	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/packngo"
 	"github.com/packethost/pkg/env"
-	perrors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 func fetchFacilityPage(ctx context.Context, client *packngo.Client, url string) ([]map[string]interface{}, uint, error) {
 	req, err := client.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, 0, perrors.Wrap(err, "failed to create fetch request")
+		return nil, 0, errors.Wrap(err, "failed to create fetch request")
 	}
 
 	req = req.WithContext(ctx)
@@ -37,7 +36,7 @@ func fetchFacilityPage(ctx context.Context, client *packngo.Client, url string) 
 
 	_, err = client.Do(req, &r)
 	if err != nil {
-		return nil, 0, perrors.Wrap(err, "failed to fetch page")
+		return nil, 0, errors.Wrap(err, "failed to fetch page")
 	}
 
 	return r.Hardware, uint(r.Meta.Total), nil
@@ -66,7 +65,7 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 
 	_, total, err := fetchFacilityPage(ctx, client, api.String())
 	if err != nil {
-		return perrors.Wrap(err, "failed to fetch initial page")
+		return errors.Wrap(err, "failed to fetch initial page")
 	}
 
 	perPage := env.Int("CACHER_FETCH_PER_PAGE", 50)
@@ -95,7 +94,7 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 			tPageStart := time.Now()
 			hw, _, err := fetchFacilityPage(ctx, client, url)
 			if err != nil {
-				logger.Fatal(perrors.Wrapf(err, "failed to fetch page"))
+				logger.Fatal(errors.Wrapf(err, "failed to fetch page"))
 				return
 			}
 			logger.With("page", page, "pages", iterations, "duration", time.Since(tPageStart)).Info("fetched a page")
@@ -134,7 +133,7 @@ func copyInEach(hw *hardware.Hardware, data []map[string]interface{}) error {
 
 		q, err := json.Marshal(j)
 		if err != nil {
-			return perrors.Wrap(err, "marshal json")
+			return errors.Wrap(err, "marshal json")
 		}
 
 		_, err = hw.Add(string(q))

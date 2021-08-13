@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -21,9 +20,8 @@ import (
 	"github.com/packethost/pkg/env"
 	"github.com/packethost/pkg/grpc"
 	"github.com/packethost/pkg/log"
-	perrors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -61,7 +59,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, errCh chan<- error) 
 		grpc_health_v1.RegisterHealthServer(s.Server(), healthcheck.GrpcHealthChecker())
 	})
 	if err != nil {
-		logger.Fatal(perrors.Wrap(err, "setup grpc server"))
+		logger.Fatal(errors.Wrap(err, "setup grpc server"))
 	}
 
 	go func() {
@@ -119,7 +117,7 @@ func setupGitRevJSON() {
 
 	b, err := json.Marshal(&res)
 	if err != nil {
-		err = perrors.Wrap(err, "could not marshal version json")
+		err = errors.Wrap(err, "could not marshal version json")
 		logger.Error(err)
 		panic(err)
 	}
