@@ -19,10 +19,8 @@ jobs:
       run: go get golang.org/x/tools/cmd/goimports && goimports -d . | (! grep .)
     - name: go vet
       run: go vet ./...
-#    - name: golangci-lint
-#      uses: golangci/golangci-lint-action@v2
-#      with:
-#        version: v1.31
+    - name: golangci-lint
+      run: make lint
     - name: go test
       run: go test -v ./...
     - name: go test coverage
