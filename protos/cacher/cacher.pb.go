@@ -15,9 +15,11 @@ import (
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -42,15 +44,19 @@ func (*PushRequest) Descriptor() ([]byte, []int) {
 func (m *PushRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PushRequest.Unmarshal(m, b)
 }
+
 func (m *PushRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PushRequest.Marshal(b, m, deterministic)
 }
+
 func (m *PushRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_PushRequest.Merge(m, src)
 }
+
 func (m *PushRequest) XXX_Size() int {
 	return xxx_messageInfo_PushRequest.Size(m)
 }
+
 func (m *PushRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_PushRequest.DiscardUnknown(m)
 }
@@ -80,15 +86,19 @@ func (*Empty) Descriptor() ([]byte, []int) {
 func (m *Empty) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Empty.Unmarshal(m, b)
 }
+
 func (m *Empty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Empty.Marshal(b, m, deterministic)
 }
+
 func (m *Empty) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Empty.Merge(m, src)
 }
+
 func (m *Empty) XXX_Size() int {
 	return xxx_messageInfo_Empty.Size(m)
 }
+
 func (m *Empty) XXX_DiscardUnknown() {
 	xxx_messageInfo_Empty.DiscardUnknown(m)
 }
@@ -114,15 +124,19 @@ func (*GetRequest) Descriptor() ([]byte, []int) {
 func (m *GetRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRequest.Unmarshal(m, b)
 }
+
 func (m *GetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_GetRequest.Marshal(b, m, deterministic)
 }
+
 func (m *GetRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_GetRequest.Merge(m, src)
 }
+
 func (m *GetRequest) XXX_Size() int {
 	return xxx_messageInfo_GetRequest.Size(m)
 }
+
 func (m *GetRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_GetRequest.DiscardUnknown(m)
 }
@@ -167,15 +181,19 @@ func (*Hardware) Descriptor() ([]byte, []int) {
 func (m *Hardware) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Hardware.Unmarshal(m, b)
 }
+
 func (m *Hardware) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Hardware.Marshal(b, m, deterministic)
 }
+
 func (m *Hardware) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_Hardware.Merge(m, src)
 }
+
 func (m *Hardware) XXX_Size() int {
 	return xxx_messageInfo_Hardware.Size(m)
 }
+
 func (m *Hardware) XXX_DiscardUnknown() {
 	xxx_messageInfo_Hardware.DiscardUnknown(m)
 }
@@ -219,8 +237,10 @@ var fileDescriptor_fb7d8dcbbf6a4aae = []byte{
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
+var (
+	_ context.Context
+	_ grpc.ClientConn
+)
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -368,27 +388,32 @@ type CacherServer interface {
 }
 
 // UnimplementedCacherServer can be embedded to have forward compatible implementations.
-type UnimplementedCacherServer struct {
-}
+type UnimplementedCacherServer struct{}
 
 func (*UnimplementedCacherServer) Push(ctx context.Context, req *PushRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
 }
+
 func (*UnimplementedCacherServer) ByMAC(ctx context.Context, req *GetRequest) (*Hardware, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ByMAC not implemented")
 }
+
 func (*UnimplementedCacherServer) ByIP(ctx context.Context, req *GetRequest) (*Hardware, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ByIP not implemented")
 }
+
 func (*UnimplementedCacherServer) ByID(ctx context.Context, req *GetRequest) (*Hardware, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ByID not implemented")
 }
+
 func (*UnimplementedCacherServer) All(req *Empty, srv Cacher_AllServer) error {
 	return status.Errorf(codes.Unimplemented, "method All not implemented")
 }
+
 func (*UnimplementedCacherServer) Ingest(ctx context.Context, req *Empty) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ingest not implemented")
 }
+
 func (*UnimplementedCacherServer) Watch(req *GetRequest, srv Cacher_WatchServer) error {
 	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }

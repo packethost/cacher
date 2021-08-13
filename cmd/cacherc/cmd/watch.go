@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -13,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// watchCmd represents the watch command
+// watchCmd represents the watch command.
 var watchCmd = &cobra.Command{
 	Use:     "watch",
 	Short:   "Register to watch an id for any changes",
@@ -37,7 +38,7 @@ var watchCmd = &cobra.Command{
 					fmt.Println(hw.JSON)
 					stdoutLock.Unlock()
 				}
-				if err != nil && err != io.EOF {
+				if err != nil && !errors.Is(err, io.EOF) {
 					log.Fatal(err)
 				}
 			}(id)

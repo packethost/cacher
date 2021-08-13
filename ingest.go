@@ -102,9 +102,9 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	return nil
 }
 
-func copyin(ctx context.Context, hw *hardware.Hardware, data <-chan []map[string]interface{}) error {
+func copyin(hw *hardware.Hardware, data <-chan []map[string]interface{}) error {
 	for hws := range data {
-		if err := copyInEach(ctx, hw, hws); err != nil {
+		if err := copyInEach(hw, hws); err != nil {
 			return err
 		}
 	}
@@ -112,7 +112,7 @@ func copyin(ctx context.Context, hw *hardware.Hardware, data <-chan []map[string
 	return nil
 }
 
-func copyInEach(ctx context.Context, hw *hardware.Hardware, data []map[string]interface{}) error {
+func copyInEach(hw *hardware.Hardware, data []map[string]interface{}) error {
 	logger.Info("copy start")
 	labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
 	ingestCount.With(labels).Inc()
@@ -175,7 +175,7 @@ func (s *server) ingest(ctx context.Context, api *url.URL, facility string) erro
 	go func() {
 		defer wg.Done()
 
-		if err := copyin(ctx, s.hw, ch); err != nil {
+		if err := copyin(s.hw, ch); err != nil {
 			labels := prometheus.Labels{"method": "Ingest", "op": "copy"}
 			ingestErrors.With(labels).Inc()
 

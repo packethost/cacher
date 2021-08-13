@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("ROLLBAR_TOKEN", "1")
 
 	logger, _ = log.Init("github.com/packethost/cacher")
-	setupMetrics("testing")
+	setupMetrics()
 
 	os.Exit(m.Run())
 }
@@ -31,7 +31,9 @@ func TestFetchFacility(t *testing.T) {
 	os.Unsetenv("CACHER_FETCH_PER_PAGE")
 
 	logger = log.Test(t, "github.com/packethost/cacher")
+
 	defer gock.Off()
+
 	facility := "testing" + strconv.Itoa(rand.Int())
 
 	pages := []map[string]interface{}{

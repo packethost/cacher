@@ -41,7 +41,7 @@ func mustParseURL(s string) *url.URL {
 	return u
 }
 
-func setupGRPC(ctx context.Context, client *packngo.Client, facility string, errCh chan<- error) *server {
+func setupGRPC(ctx context.Context, client *packngo.Client, errCh chan<- error) *server {
 	cert := []byte(env.Get("CACHER_TLS_CERT"))
 
 	server := &server{
@@ -134,10 +134,14 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 		}
 		errCh <- err
 	}()
+
 	go func() {
 		<-ctx.Done()
-		srv.Shutdown(context.Background())
+		if err := srv.Shutdown(context.Background()); err != nil {
+			logger.Error(err)
+		}
 	}()
+
 	return srv
 }
 
@@ -155,11 +159,11 @@ func main() {
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 	facility := os.Getenv("FACILITY")
-	setupMetrics(facility)
+	setupMetrics()
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	server := setupGRPC(ctx, client, facility, errCh)
+	server := setupGRPC(ctx, client, errCh)
 	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
 
 	if err := server.ingest(ctx, api, facility); err != nil {

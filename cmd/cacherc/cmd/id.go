@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// idCmd represents the id command
+// idCmd represents the id command.
 var idCmd = &cobra.Command{
 	Use:     "id",
 	Short:   "Get hardware by id",

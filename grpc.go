@@ -96,13 +96,16 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 		s.ingestReadyLock.RLock()
 		ready := s.ingestDone
 		s.ingestReadyLock.RUnlock()
+
 		if !ready {
 			cacheStalls.With(labels).Inc()
+
 			return &cacher.Hardware{}, errors.New("DB is not ready")
 		}
 	}
 
 	cacheHits.With(labels).Inc()
+
 	return &cacher.Hardware{JSON: j}, nil
 }
 

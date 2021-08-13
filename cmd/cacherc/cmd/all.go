@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// allCmd represents the all command
+// allCmd represents the all command.
 var allCmd = &cobra.Command{
 	Use:   "all",
 	Short: "Get all known hardware for facility",
@@ -27,7 +28,7 @@ var allCmd = &cobra.Command{
 		for hw, err = alls.Recv(); err == nil && hw != nil; hw, err = alls.Recv() {
 			fmt.Println(hw.JSON)
 		}
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			log.Fatal(err)
 		}
 	},

@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// macCmd represents the mac command
+// macCmd represents the mac command.
 var macCmd = &cobra.Command{
 	Use:     "mac",
 	Short:   "Get hardware by any associated mac",
@@ -23,6 +23,7 @@ var macCmd = &cobra.Command{
 				return fmt.Errorf("invalid mac: %s", arg)
 			}
 		}
+
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {

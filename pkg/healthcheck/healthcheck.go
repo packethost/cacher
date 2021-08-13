@@ -10,7 +10,7 @@ import (
 // HealthChecker for grpc server.
 type HealthChecker struct{}
 
-// Check status and returns grpc healthcheckresponse
+// Check status and return a GRPC health response.
 func (s *HealthChecker) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	return &grpc_health_v1.HealthCheckResponse{
 		Status: grpc_health_v1.HealthCheckResponse_SERVING,
