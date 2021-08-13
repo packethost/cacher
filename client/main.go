@@ -18,7 +18,6 @@ import (
 // New returns a new configured cacher client for the given facility.
 func New(facility string) (cacher.CacherClient, error) {
 	var do grpc.DialOption
-	var err error
 
 	useTLS := env.Bool("CACHER_USE_TLS", true)
 	if !useTLS {
@@ -34,6 +33,8 @@ func New(facility string) (cacher.CacherClient, error) {
 			return nil, errors.Wrap(err, "get credentials from url")
 		}
 	}
+
+	var err error
 
 	grpcAuthority := env.Get("CACHER_GRPC_AUTHORITY")
 	if grpcAuthority == "" {

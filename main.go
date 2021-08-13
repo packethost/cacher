@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,7 +21,7 @@ import (
 	"github.com/packethost/pkg/env"
 	"github.com/packethost/pkg/grpc"
 	"github.com/packethost/pkg/log"
-	"github.com/pkg/errors"
+	perrors "github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -38,6 +40,7 @@ func mustParseURL(s string) *url.URL {
 	if err != nil {
 		panic(err)
 	}
+
 	return u
 }
 
@@ -52,12 +55,13 @@ func setupGRPC(ctx context.Context, client *packngo.Client, errCh chan<- error) 
 		hw:     hardware.New(hardware.Gauge(cacheCountTotal), hardware.Logger(logger.Package("hardware"))),
 		watch:  map[string]chan string{},
 	}
+
 	s, err := grpc.NewServer(logger, func(s *grpc.Server) {
 		cacher.RegisterCacherServer(s.Server(), server)
 		grpc_health_v1.RegisterHealthServer(s.Server(), healthcheck.GrpcHealthChecker())
 	})
 	if err != nil {
-		logger.Fatal(errors.Wrap(err, "setup grpc server"))
+		logger.Fatal(perrors.Wrap(err, "setup grpc server"))
 	}
 
 	go func() {
@@ -75,7 +79,10 @@ func setupGRPC(ctx context.Context, client *packngo.Client, errCh chan<- error) 
 
 func versionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(gitRevJSON)
+
+	if _, err := w.Write(gitRevJSON); err != nil {
+		logger.Error(fmt.Errorf("versionHandler write: %w", err))
+	}
 }
 
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +102,10 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+
+	if _, err := w.Write(b); err != nil {
+		logger.Error(fmt.Errorf("healthCheckHandler write: %w", err))
+	}
 }
 
 func setupGitRevJSON() {
@@ -106,12 +116,14 @@ func setupGitRevJSON() {
 		GitRev:  gitRev,
 		Service: "cacher",
 	}
+
 	b, err := json.Marshal(&res)
 	if err != nil {
-		err = errors.Wrap(err, "could not marshal version json")
+		err = perrors.Wrap(err, "could not marshal version json")
 		logger.Error(err)
 		panic(err)
 	}
+
 	gitRevJSON = b
 }
 
@@ -126,17 +138,21 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 	srv := &http.Server{
 		Addr: ":" + env.Get("HTTP_PORT", "42112"),
 	}
+
 	go func() {
 		logger.Info("serving http")
+
 		err := srv.ListenAndServe()
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			err = nil
 		}
+
 		errCh <- err
 	}()
 
 	go func() {
 		<-ctx.Done()
+
 		if err := srv.Shutdown(context.Background()); err != nil {
 			logger.Error(err)
 		}
@@ -150,6 +166,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	logger = log
 	defer logger.Close()
 
@@ -159,14 +176,16 @@ func main() {
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
 	facility := os.Getenv("FACILITY")
+
 	setupMetrics()
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	server := setupGRPC(ctx, client, errCh)
-	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
+	srv := setupGRPC(ctx, client, errCh)
 
-	if err := server.ingest(ctx, api, facility); err != nil {
+	setupHTTP(ctx, srv.Cert(), srv.ModTime(), errCh)
+
+	if err := srv.ingest(ctx, api, facility); err != nil {
 		logger.Error(err)
 		panic(err)
 	}
@@ -188,6 +207,7 @@ func main() {
 		logger.Error(err)
 		panic(err)
 	}
+
 	err = <-errCh
 	if err != nil {
 		logger.Error(err)

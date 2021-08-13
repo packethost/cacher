@@ -4,3 +4,4 @@ certs/
 cacher-linux-x86_64
 cacherc-linux-x86_64
 coverage.txt
+out/

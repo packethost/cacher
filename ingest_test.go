@@ -21,6 +21,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("ROLLBAR_TOKEN", "1")
 
 	logger, _ = log.Init("github.com/packethost/cacher")
+
 	setupMetrics()
 
 	os.Exit(m.Run())
@@ -69,6 +70,7 @@ func TestFetchFacility(t *testing.T) {
 		MatchParam("per_page", "1").
 		Reply(200).
 		JSON(pages[0])
+
 	for i, m := range pages {
 		gock.New("https://api.packet.net").
 			Get("staff/cacher/hardware").

@@ -47,7 +47,10 @@ func main() {
 			m["instance"] = map[string]interface{}{}
 		}
 
-		instance := m["instance"].(map[string]interface{})
+		instance, ok := m["instance"].(map[string]interface{})
+		if !ok {
+			panic("type assertion failed")
+		}
 
 		buf := bytes.NewBuffer(nil)
 		if err := json.NewEncoder(buf).Encode(m); err != nil {
@@ -136,7 +139,11 @@ func main() {
 			m["metadata"] = map[string]interface{}{}
 		}
 
-		metadata := m["metadata"].(map[string]interface{})
+		metadata, ok := m["metadata"].(map[string]interface{})
+		if !ok {
+			panic("type assertion failed")
+		}
+
 		metadata["instance"] = instance
 		m["metadata"] = metadata
 
