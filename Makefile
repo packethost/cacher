@@ -34,7 +34,7 @@ ARCH := $(shell uname -m)
 
 # TODO(tstromberg): Change hadolint/shell checks to be fatal once issues can be addressed
 lint: out/linters/shellcheck-$(SHELLCHECK_VERSION)/shellcheck out/linters/hadolint-$(HADOLINT_VERSION) out/linters/golangci-lint-$(GOLINT_VERSION)
-	./out/linters/golangci-lint-$(GOLINT_VERSION) run
+	out/linters/golangci-lint-$(GOLINT_VERSION) run
 	out/linters/shellcheck-$(SHELLCHECK_VERSION)/shellcheck $(shell find . -name "*.sh") || true
 	out/linters/hadolint-$(HADOLINT_VERSION) $(shell find . -name "*Dockerfile") || true
 
