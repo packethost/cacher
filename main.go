@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tobert/otel-init-go/otelinit"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -157,7 +158,11 @@ func main() {
 		api = mustParseURL(url)
 	}
 
-	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), nil)
+	// pass a custom http client to packngo that uses the OpenTelemetry
+	// transport which enables trace propagation to/from API
+	hc := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+
+	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), hc)
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
 
