@@ -1,7 +1,5 @@
 server := cacher-linux-x86_64
 cli := cmd/cacherc/cacherc-linux-x86_64
-GOLINT_VERSION ?= v1.41.1
-
 binaries := ${server} ${cli}
 all: ${binaries}
 
