@@ -9,53 +9,52 @@ linters-settings:
 linters:
   disable-all: true
   enable:
-    - deadcode
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - structcheck
-    - typecheck
-    - unused
-    - varcheck
-    - dogsled
-    - gocritic
-    - gofmt
-    - goimports
-    - misspell
-    - nakedret
-    - stylecheck
-    - unconvert
-    - unparam
-    - revive
-    - ifshort
-    - whitespace
-    - wastedassign
     - asciicheck
     - bodyclose
+    - cyclop
+    - deadcode
+    - dogsled
     - durationcheck
+    - errcheck
     - errorlint
     - exhaustive
     - exportloopref
     - forcetypeassert
+    - gocritic
     - gocyclo
     - godot
+    - gofmt
     - goheader
+    - goimports
     - goprintffuncname
+    - gosimple
+    - govet
+    - ifshort
     - importas
+    - ineffassign
     - makezero
+    - misspell
+    - nakedret
     - nestif
     - nilerr
     - nolintlint
     - prealloc
     - predeclared
+    - revive
     - rowserrcheck
     - sqlclosecheck
+    - staticcheck
+    - structcheck
+    - stylecheck
     - thelper
     - tparallel
-    - cyclop
-    - wsl
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - wastedassign
+    - whitespace
 
   # To be enabled soon:
   # - gochecknoinits
