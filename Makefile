@@ -20,8 +20,9 @@ protos/cacher/cacher.pb.go: protos/cacher/cacher.proto
 
 test: lint test-only
 
+# NOTE: -race requires CGO_ENABLED=1
 test-only:
-	go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
+	CGO_ENABLED=1 go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
 
 run: ${binaries}
 	docker-compose up --build server
