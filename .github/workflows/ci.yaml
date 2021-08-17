@@ -20,10 +20,12 @@ jobs:
     # Workaround for missing checksums caused by https://github.com/golang/go/issues/44129
     - name: gomod fix
       run: go env -w GOFLAGS=-mod=mod
-    - name: lint
+    - name: go vet
+      run: go vet ./...
+    - name: golangci-lint
       run: make lint
-    - name: tests
-      run: make test-only
+    - name: go test
+      run: go test -v ./...
     - name: go test coverage
       run: go test -coverprofile=coverage.txt ./...
     - name: upload codecov
