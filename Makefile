@@ -42,7 +42,7 @@ lint: out/linters/shellcheck-$(SHELLCHECK_VERSION)/shellcheck out/linters/hadoli
 # Shell script linter
 out/linters/shellcheck-$(SHELLCHECK_VERSION)/shellcheck:
 	mkdir -p out/linters
-	curl -sfL https://github.com/koalaman/shellcheck/releases/download/v0.7.2/shellcheck-$(SHELLCHECK_VERSION).$(OS).$(ARCH).tar.xz | tar -C out/linters -zxvf -
+	curl -sfL https://github.com/koalaman/shellcheck/releases/download/v0.7.2/shellcheck-$(SHELLCHECK_VERSION).$(OS).$(ARCH).tar.xz | tar -C out/linters -xJf -
 
 # Dockerfile linter
 out/linters/hadolint-$(HADOLINT_VERSION):
