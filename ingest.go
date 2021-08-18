@@ -14,6 +14,8 @@ import (
 	"github.com/packethost/pkg/env"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func fetchFacilityPage(ctx context.Context, client *packngo.Client, url string) ([]map[string]interface{}, uint, uint, error) {
@@ -46,11 +48,16 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 	ingestCount.With(labels).Inc()
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(ingestDuration.With(labels).Set))
 
-	pool := workerpool.New(env.Int("CACHER_CONCURRENT_FETCHES", 4))
+	concurrentFetches := env.Int("CACHER_CONCURRENT_FETCHES", 4)
+	pool := workerpool.New(concurrentFetches)
+
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.Int("CACHER_CONCURRENT_FETCHES", concurrentFetches))
 
 	defer close(data)
 
 	api.Path = "/staff/cacher/hardware"
+	// this query is used to fetch the first page then mutated later to paginate
 	q := api.Query()
 	q.Set("facility", facility)
 	q.Set("sort_by", "created_at")
@@ -73,6 +80,14 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 		iterations++
 	}
 
+	span.SetAttributes(
+		attribute.String("fetchFacility.path", api.Path),
+		attribute.String("fetchFacility.base.query", q.Encode()),
+		attribute.Int("CACHER_FETCH_PER_PAGE", perPage),
+		attribute.Int("fetchFacility.paging.total", int(total)),
+		attribute.Int("fetchFacility.paging.iterations", iterations),
+	)
+
 	q.Set("per_page", strconv.Itoa(perPage))
 	tStart := time.Now()
 	for i := 1; i <= iterations; i++ {
@@ -80,6 +95,11 @@ func fetchFacility(ctx context.Context, client *packngo.Client, api *url.URL, fa
 		api.RawQuery = q.Encode()
 		url := api.String()
 		page := i
+
+		span.AddEvent("fetching page",
+			trace.WithAttributes(attribute.Int("page", page)),
+			trace.WithAttributes(attribute.String("query", api.RawQuery)),
+		)
 
 		pool.Submit(func() {
 			logger.With("page", page).Info("fetching a page")
