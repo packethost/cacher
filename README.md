@@ -54,8 +54,7 @@ Usage:
 
 ## OpenTelemetry
 
-OpenTelemetry hooks are enabled for gRPC so each gRPC transaction will generate spans and traces, as well as propagate
-any tracing information from clients to API.
+OpenTelemetry hooks are enabled for gRPC so each gRPC transaction will generate spans and traces, as well as propagate any tracing information from clients to API.
 
 To export traces to an opentelemetry collector on localhost, set the following:
 
