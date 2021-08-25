@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/equinix-labs/otel-init-go/otelinit"
 	"github.com/packethost/cacher/hardware"
 	"github.com/packethost/cacher/pkg/healthcheck"
 	"github.com/packethost/cacher/protos/cacher"
@@ -21,7 +22,6 @@ import (
 	"github.com/packethost/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/tobert/otel-init-go/otelinit"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -151,8 +151,9 @@ func main() {
 	logger = log
 	defer logger.Close()
 
-	otelShutdown := otelinit.InitOpenTelemetry("cacher")
-	defer otelShutdown()
+	ctx := context.Background()
+	ctx, otelShutdown := otelinit.InitOpenTelemetry(ctx, "cacher")
+	defer otelShutdown(ctx)
 
 	if url := os.Getenv("PACKET_API_URL"); url != "" && mustParseURL(url).String() != api.String() {
 		api = mustParseURL(url)
@@ -166,7 +167,7 @@ func main() {
 	facility := os.Getenv("FACILITY")
 	setupMetrics(facility)
 
-	ctx, closer := context.WithCancel(context.Background())
+	ctx, closer := context.WithCancel(ctx)
 	errCh := make(chan error, 2)
 	server := setupGRPC(ctx, client, facility, errCh)
 	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
