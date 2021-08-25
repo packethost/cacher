@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,10 +41,11 @@ func mustParseURL(s string) *url.URL {
 	if err != nil {
 		panic(err)
 	}
+
 	return u
 }
 
-func setupGRPC(ctx context.Context, client *packngo.Client, facility string, errCh chan<- error) *server {
+func setupGRPC(ctx context.Context, client *packngo.Client, errCh chan<- error) *server {
 	cert := []byte(env.Get("CACHER_TLS_CERT"))
 
 	server := &server{
@@ -54,6 +56,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, facility string, err
 		hw:     hardware.New(hardware.Gauge(cacheCountTotal), hardware.Logger(logger.Package("hardware"))),
 		watch:  map[string]chan string{},
 	}
+
 	s, err := grpc.NewServer(logger, func(s *grpc.Server) {
 		cacher.RegisterCacherServer(s.Server(), server)
 		grpc_health_v1.RegisterHealthServer(s.Server(), healthcheck.GrpcHealthChecker())
@@ -75,12 +78,15 @@ func setupGRPC(ctx context.Context, client *packngo.Client, facility string, err
 	return server
 }
 
-func versionHandler(w http.ResponseWriter, r *http.Request) {
+func versionHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(gitRevJSON)
+
+	if _, err := w.Write(gitRevJSON); err != nil {
+		logger.Error(fmt.Errorf("versionHandler write: %w", err))
+	}
 }
 
-func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+func healthCheckHandler(w http.ResponseWriter, _ *http.Request) {
 	res := struct {
 		GitRev     string  `json:"git_rev"`
 		Uptime     float64 `json:"uptime"`
@@ -97,7 +103,10 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+
+	if _, err := w.Write(b); err != nil {
+		logger.Error(fmt.Errorf("healthCheckHandler write: %w", err))
+	}
 }
 
 func setupGitRevJSON() {
@@ -108,12 +117,14 @@ func setupGitRevJSON() {
 		GitRev:  gitRev,
 		Service: "cacher",
 	}
+
 	b, err := json.Marshal(&res)
 	if err != nil {
 		err = errors.Wrap(err, "could not marshal version json")
 		logger.Error(err)
 		panic(err)
 	}
+
 	gitRevJSON = b
 }
 
@@ -128,34 +139,43 @@ func setupHTTP(ctx context.Context, certPEM []byte, modTime time.Time, errCh cha
 	srv := &http.Server{
 		Addr: ":" + env.Get("HTTP_PORT", "42112"),
 	}
+
 	go func() {
 		logger.Info("serving http")
+
 		err := srv.ListenAndServe()
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			err = nil
 		}
+
 		errCh <- err
 	}()
+
 	go func() {
 		<-ctx.Done()
-		srv.Shutdown(context.Background())
+
+		if err := srv.Shutdown(context.Background()); err != nil {
+			logger.Error(err)
+		}
 	}()
+
 	return srv
 }
 
 func main() {
-	log, err := log.Init("github.com/packethost/cacher")
+	l, err := log.Init("github.com/packethost/cacher")
 	if err != nil {
 		panic(err)
 	}
-	logger = log
+
+	logger = l
 	defer logger.Close()
 
 	otelShutdown := otelinit.InitOpenTelemetry("cacher")
 	defer otelShutdown()
 
-	if url := os.Getenv("PACKET_API_URL"); url != "" && mustParseURL(url).String() != api.String() {
-		api = mustParseURL(url)
+	if u := os.Getenv("PACKET_API_URL"); u != "" && mustParseURL(u).String() != api.String() {
+		api = mustParseURL(u)
 	}
 
 	// pass a custom http client to packngo that uses the OpenTelemetry
@@ -164,14 +184,16 @@ func main() {
 
 	client := packngo.NewClientWithAuth(os.Getenv("PACKET_CONSUMER_TOKEN"), os.Getenv("PACKET_API_AUTH_TOKEN"), hc)
 	facility := os.Getenv("FACILITY")
-	setupMetrics(facility)
+
+	setupMetrics()
 
 	ctx, closer := context.WithCancel(context.Background())
 	errCh := make(chan error, 2)
-	server := setupGRPC(ctx, client, facility, errCh)
-	setupHTTP(ctx, server.Cert(), server.ModTime(), errCh)
+	srv := setupGRPC(ctx, client, errCh)
 
-	if err := server.ingest(ctx, api, facility); err != nil {
+	setupHTTP(ctx, srv.Cert(), srv.ModTime(), errCh)
+
+	if err := srv.ingest(ctx, api, facility); err != nil {
 		logger.Error(err)
 		panic(err)
 	}
@@ -193,6 +215,7 @@ func main() {
 		logger.Error(err)
 		panic(err)
 	}
+
 	err = <-errCh
 	if err != nil {
 		logger.Error(err)

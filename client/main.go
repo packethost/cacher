@@ -16,9 +16,8 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// New returns a new cacher client for the requested facility. It uses the
-// following environment variables for configuration:
-// CACHER_USE_TLS, CACHER_CERT_URL, and CACHER_GRPC_AUTHORITY
+// New returns a new cacher client for the requested facility.
+// It respects the following environment variables: CACHER_USE_TLS, CACHER_CERT_URL, and CACHER_GRPC_AUTHORITY.
 func New(facility string) (cacher.CacherClient, error) {
 	// setup OpenTelemetry autoinstrumentation automatically on the gRPC client
 	dialOpts := []grpc.DialOption{

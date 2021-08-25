@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6
 	github.com/packethost/pkg v0.0.0-20200903155310-0433e0605550
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.6.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v1.0.1-0.20200713175500-884edc58ad08
@@ -16,9 +16,9 @@ require (
 	github.com/tinkerbell/boots v0.0.0-20201111172111-e81a291c4d02
 	github.com/tobert/otel-init-go v0.0.0-20210804183951-47b83e855e3b
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.22.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.22.0 // indirect
-	go.opentelemetry.io/otel v1.0.0-RC2 // indirect
-	go.opentelemetry.io/otel/trace v1.0.0-RC2 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.22.0
+	go.opentelemetry.io/otel v1.0.0-RC2
+	go.opentelemetry.io/otel/trace v1.0.0-RC2
 	google.golang.org/grpc v1.39.0
 	google.golang.org/grpc/examples v0.0.0-20210728214646-ad0a2a847cdf // indirect
 	google.golang.org/protobuf v1.27.1

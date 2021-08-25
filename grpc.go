@@ -36,7 +36,7 @@ type server struct {
 // protoc's import ordering (currently) doesn't match goimport's expectations, so rewrite them on the fly
 //go:generate goimports -w protos/cacher/cacher.pb.go
 
-// Push implements cacher.CacherServer
+// Push implements cacher.CacherServer.
 func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empty, error) {
 	trace.SpanFromContext(ctx).AddEvent("push")
 	logger.Info("push")
@@ -51,6 +51,7 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	if err != nil {
 		cacheErrors.With(labels).Inc()
 		logger.Error(err)
+
 		return nil, err
 	}
 
@@ -70,8 +71,8 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 	return &cacher.Empty{}, err
 }
 
-// Ingest implements cacher.CacherServer
-func (s *server) Ingest(ctx context.Context, in *cacher.Empty) (*cacher.Empty, error) {
+// Ingest implements cacher.CacherServer.
+func (s *server) Ingest(ctx context.Context, _ *cacher.Empty) (*cacher.Empty, error) {
 	trace.SpanFromContext(ctx).AddEvent("ingest")
 	logger.Info("ingest")
 	labels := prometheus.Labels{"method": "Ingest", "op": ""}
@@ -88,10 +89,12 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 
 	cacheTotals.With(labels).Inc()
 	cacheInFlight.With(labels).Inc()
+
 	defer cacheInFlight.With(labels).Dec()
 
 	timer := prometheus.NewTimer(cacheDuration.With(labels))
 	defer timer.ObserveDuration()
+
 	j, err := fn()
 	if err != nil {
 		cacheErrors.With(labels).Inc()
@@ -112,7 +115,7 @@ func (s *server) by(method string, fn func() (string, error)) (*cacher.Hardware,
 	return &cacher.Hardware{JSON: j}, nil
 }
 
-// ByMAC implements cacher.CacherServer
+// ByMAC implements cacher.CacherServer.
 func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
 	trace.SpanFromContext(ctx).SetAttributes(attribute.String("MAC", in.MAC))
 	return s.by("ByMAC", func() (string, error) {
@@ -120,7 +123,7 @@ func (s *server) ByMAC(ctx context.Context, in *cacher.GetRequest) (*cacher.Hard
 	})
 }
 
-// ByIP implements cacher.CacherServer
+// ByIP implements cacher.CacherServer.
 func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
 	trace.SpanFromContext(ctx).SetAttributes(attribute.String("IP", in.IP))
 	return s.by("ByIP", func() (string, error) {
@@ -128,7 +131,7 @@ func (s *server) ByIP(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardw
 	})
 }
 
-// ByID implements cacher.CacherServer
+// ByID implements cacher.CacherServer.
 func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardware, error) {
 	trace.SpanFromContext(ctx).SetAttributes(attribute.String("ID", in.ID))
 	return s.by("ByID", func() (string, error) {
@@ -136,7 +139,7 @@ func (s *server) ByID(ctx context.Context, in *cacher.GetRequest) (*cacher.Hardw
 	})
 }
 
-// ALL implements cacher.CacherServer
+// ALL implements cacher.CacherServer.
 func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 	labels := prometheus.Labels{"method": "All", "op": "get"}
 
@@ -163,38 +166,45 @@ func (s *server) All(_ *cacher.Empty, stream cacher.Cacher_AllServer) error {
 	}
 
 	cacheHits.With(labels).Inc()
+
 	return nil
 }
 
-// Watch implements cacher.CacherServer
+// Watch implements cacher.CacherServer.
 func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) error {
 	l := logger.With("id", in.ID)
-
 	ch := make(chan string, 1)
+
 	s.watchLock.Lock()
+
 	old, ok := s.watch[in.ID]
 	if ok {
 		l.Info("evicting old watch")
 		close(old)
 	}
+
 	s.watch[in.ID] = ch
 	s.watchLock.Unlock()
 
 	labels := prometheus.Labels{"method": "Watch", "op": "watch"}
 	cacheInFlight.With(labels).Inc()
+
 	defer cacheInFlight.With(labels).Dec()
 
 	defer func() {
 		s.watchLock.Lock()
+
 		// Only delete and close if the existing channel matches
 		if s.watch[in.ID] == ch {
 			delete(s.watch, in.ID)
 			close(ch)
 		}
+
 		s.watchLock.Unlock()
 	}()
 
 	hw := &cacher.Hardware{}
+
 	for {
 		select {
 		case <-s.quit:
@@ -206,29 +216,32 @@ func (s *server) Watch(in *cacher.GetRequest, stream cacher.Cacher_WatchServer) 
 		case j, ok := <-ch:
 			if !ok {
 				l.Info("we are being evicted, goodbye")
+
 				// ch was replaced and already closed
 				return status.Error(codes.Unknown, "evicted")
 			}
 
 			hw.Reset()
 			hw.JSON = j
-			err := stream.Send(hw)
-			if err != nil {
+
+			if err := stream.Send(hw); err != nil {
 				cacheErrors.With(labels).Inc()
+
 				err = errors.Wrap(err, "stream send")
 				l.Error(err)
+
 				return err
 			}
 		}
 	}
 }
 
-// Cert returns the public cert that can be served to clients
+// Cert returns the public cert that can be served to clients.
 func (s *server) Cert() []byte {
 	return s.cert
 }
 
-// ModTime returns the modified-time of the grpc cert
+// ModTime returns the modified-time of the gRPC cert.
 func (s *server) ModTime() time.Time {
 	return s.modT
 }
