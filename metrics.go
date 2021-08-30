@@ -23,7 +23,7 @@ var (
 	watchMissTotal prometheus.Counter
 )
 
-func setupMetrics(facility string) {
+func setupMetrics() {
 	cacheCountTotal = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "cache_count_total",
 		Help: "Number of in devices in memory.",
@@ -55,6 +55,7 @@ func setupMetrics(facility string) {
 	}, []string{"method", "op"})
 
 	logger.Info("initializing label values")
+
 	var labels []prometheus.Labels
 
 	labels = []prometheus.Labels{

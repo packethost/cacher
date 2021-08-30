@@ -16,7 +16,7 @@ import (
 
 var cfgFile string
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "cacherc",
 	Short: "cacher client",
@@ -26,10 +26,12 @@ func connectGRPC(facility string, err error) cacher.CacherClient {
 	if err != nil {
 		panic(err)
 	}
+
 	c, err := client.New(facility)
 	if err != nil {
 		panic(err)
 	}
+
 	return c
 }
 
@@ -37,11 +39,13 @@ func verifyUUIDs(args []string) error {
 	if len(args) < 1 {
 		return errors.New("requires at least one id")
 	}
+
 	for _, arg := range args {
 		if _, err := uuid.FromString(arg); err != nil {
 			return fmt.Errorf("invalid uuid: %s", arg)
 		}
 	}
+
 	return nil
 }
 

@@ -156,14 +156,26 @@ func TestGauge(t *testing.T) {
 
 	hw := New(Gauge(g))
 	id, _ := hw.Add(fmt.Sprintf(`{"id":"%s"}`, uuid.New().String()))
-	assert.Equal(1, int(testutil.ToFloat64(g)))
-	hw.Add(fmt.Sprintf(`{"id":"%s"}`, uuid.New().String()))
-	assert.Equal(2, int(testutil.ToFloat64(g)))
-	hw.Add(fmt.Sprintf(`{"id":"%s"}`, id))
-	assert.Equal(2, int(testutil.ToFloat64(g)))
-	hw.Add(fmt.Sprintf(`{"id":"%s", "state":"deleted"}`, id))
+
 	assert.Equal(1, int(testutil.ToFloat64(g)))
 
+	if _, err := hw.Add(fmt.Sprintf(`{"id":"%s"}`, uuid.New().String())); err != nil {
+		t.Errorf("add failed: %v", err)
+	}
+
+	assert.Equal(2, int(testutil.ToFloat64(g)))
+
+	if _, err := hw.Add(fmt.Sprintf(`{"id":"%s"}`, id)); err != nil {
+		t.Errorf("add failed: %v", err)
+	}
+
+	assert.Equal(2, int(testutil.ToFloat64(g)))
+
+	if _, err := hw.Add(fmt.Sprintf(`{"id":"%s", "state":"deleted"}`, id)); err != nil {
+		t.Errorf("add failed: %v", err)
+	}
+
+	assert.Equal(1, int(testutil.ToFloat64(g)))
 }
 
 func TestAll(t *testing.T) {
@@ -182,15 +194,18 @@ func TestAll(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEmpty(id)
 	}
+
 	assert.Len(hw.hw, l)
 
 	assert.NoError(hw.All(func(j string) error {
 		jsons[j] = true
+
 		return nil
 	}))
 
 	// ensure all were found, and no new ones spontaneously popped into existence
 	assert.Len(jsons, l)
+
 	for j, found := range jsons {
 		assert.True(found, j)
 	}
@@ -208,7 +223,10 @@ func TestByID(t *testing.T) {
 	j := `{"id":"` + id + `","some-other-random-id":"` + uuid.New().String() + `"}`
 
 	hw := New()
-	hw.Add(j)
+	if _, err := hw.Add(j); err != nil {
+		t.Errorf("add failed: %v", err)
+	}
+
 	h, err := hw.ByID(id)
 	assert.NoError(err)
 	assert.Equal(j, h)
@@ -234,10 +252,15 @@ func TestByIP(t *testing.T) {
 		t.Log("ip:", test.ip)
 		j := fmt.Sprintf(test.j, test.id)
 		hw := New()
-		hw.Add(j)
+
+		if _, err := hw.Add(j); err != nil {
+			t.Errorf("add failed: %v", err)
+		}
+
 		if test.empty {
 			j = ""
 		}
+
 		h, err := hw.ByIP(test.ip)
 		if test.err == "" {
 			assert.NoError(err)
@@ -264,6 +287,7 @@ func TestByIP(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(j1, j)
 	}
+
 	for _, ip := range []string{"5", "6", "7", "8"} {
 		j, err := hw.ByIP("10.0.0." + ip)
 		assert.NoError(err)
@@ -311,13 +335,20 @@ func TestByMAC(t *testing.T) {
 		{id: uuid.New().String(), mac: "not-a-mac", j: `{"id":"%s","network_ports":[{"data":{"mac":"00:00:00:00:00:bb"}}]}`, err: "failed to parse mac: address not-a-mac: invalid MAC address"},
 	} {
 		t.Log("mac:", test.mac)
-		j := fmt.Sprintf(test.j, test.id)
+
 		hw := New()
-		hw.Add(j)
+
+		j := fmt.Sprintf(test.j, test.id)
+		if _, err := hw.Add(j); err != nil {
+			t.Errorf("add failed: %v", err)
+		}
+
 		if test.empty {
 			j = ""
 		}
+
 		h, err := hw.ByMAC(test.mac)
+
 		if test.err == "" {
 			assert.NoError(err)
 			assert.Equal(j, h)
@@ -343,6 +374,7 @@ func TestByMAC(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(j1, j)
 	}
+
 	for _, mac := range []string{"03", "04"} {
 		j, err := hw.ByMAC("00:00:00:00:00:" + mac)
 		assert.NoError(err)

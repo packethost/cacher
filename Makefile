@@ -16,8 +16,12 @@ protos/cacher/cacher.pb.go: protos/cacher/cacher.proto
 	go generate ./...
 	goimports -w $@
 
-test:
-	go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
+test: lint test-only
+
+test-only:
+	CGO_ENABLED=1 go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
 
 run: ${binaries}
 	docker-compose up --build server
+
+include lint.mk

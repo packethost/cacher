@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ipCmd represents the ip command
+// ipCmd represents the ip command.
 var ipCmd = &cobra.Command{
 	Use:     "ip",
 	Short:   "Get hardware by any associated ip",
@@ -23,6 +23,7 @@ var ipCmd = &cobra.Command{
 				return fmt.Errorf("invalid ip: %s", arg)
 			}
 		}
+
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {

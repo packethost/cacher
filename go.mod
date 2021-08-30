@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6
 	github.com/packethost/pkg v0.0.0-20200903155310-0433e0605550
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.6.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v1.0.1-0.20200713175500-884edc58ad08

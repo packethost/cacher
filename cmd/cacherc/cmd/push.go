@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// pushCmd represents the push command
+// pushCmd represents the push command.
 var pushCmd = &cobra.Command{
 	Use:     "push",
 	Short:   "Push new hardware to cacher",
@@ -29,6 +29,7 @@ var pushCmd = &cobra.Command{
 				return fmt.Errorf("invalid json, ID is required: %s", arg)
 			}
 		}
+
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
