@@ -3,6 +3,7 @@ module github.com/packethost/cacher
 go 1.13
 
 require (
+	github.com/equinix-labs/otel-init-go v0.0.1
 	github.com/gammazero/workerpool v0.0.0-20200311205957-7b00833861c6
 	github.com/google/uuid v1.1.2
 	github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6
@@ -14,7 +15,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tinkerbell/boots v0.0.0-20201111172111-e81a291c4d02
-	github.com/tobert/otel-init-go v0.0.0-20210804183951-47b83e855e3b
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.22.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.22.0
 	go.opentelemetry.io/otel v1.0.0-RC2
