@@ -29,7 +29,7 @@ jobs:
     - name: upload codecov
       run: bash <(curl -s https://codecov.io/bash)
   docker-images:
-    name: push image to quay.io
+    name: build image and possibly push image to quay.io
     runs-on: ubuntu-latest
     needs: [validation]
     steps:
@@ -52,6 +52,7 @@ jobs:
           type=ref,event=branch
     - name: Login to Quay
       uses: docker/login-action@v1
+      if: ${{ startsWith(github.ref, 'refs/heads/master') }}
       with:
         registry: quay.io
         username: ${{ secrets.DOCKER_USERNAME }}
@@ -67,7 +68,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         platforms: linux/amd64
-        push: true
+        push: ${{ startsWith(github.ref, 'refs/heads/master') }}
         tags: ${{ steps.meta.outputs.tags }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
