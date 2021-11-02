@@ -170,6 +170,16 @@ func copyInEach(hw *hardware.Hardware, data []map[string]interface{}) error {
 }
 
 func (s *server) ingest(ctx context.Context, api *url.URL, facility string) error {
+	if env.Bool("CACHER_NO_INGEST") {
+		cacherState.Set(2)
+
+		s.ingestReadyLock.Lock()
+		s.ingestDone = true
+		s.ingestReadyLock.Unlock()
+
+		return nil
+	}
+
 	logger.Info("ingestion is starting")
 	defer logger.Info("ingestion is done")
 	cacherState.Set(1)
