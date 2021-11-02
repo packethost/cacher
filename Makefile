@@ -18,7 +18,7 @@ protos/cacher/cacher.pb.go: protos/cacher/cacher.proto
 
 test: lint test-only
 
-test-only:
+test-only: server
 	CGO_ENABLED=1 go test -race -coverprofile=coverage.txt -covermode=atomic ${TEST_ARGS} ./...
 
 run: ${binaries}
