@@ -22,7 +22,6 @@ func New(facility string) (cacher.CacherClient, error) {
 	// setup OpenTelemetry autoinstrumentation automatically on the gRPC client
 	dialOpts := []grpc.DialOption{
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-		grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
 	}
 
 	useTLS := env.Bool("CACHER_USE_TLS", true)
