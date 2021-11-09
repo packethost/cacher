@@ -59,7 +59,7 @@ func setupGRPC(ctx context.Context, client *packngo.Client, errCh chan<- error) 
 
 	s, err := grpc.NewServer(logger, func(s *grpc.Server) {
 		cacher.RegisterCacherServer(s.Server(), server)
-		grpc_health_v1.RegisterHealthServer(s.Server(), healthcheck.GrpcHealthChecker())
+		grpc_health_v1.RegisterHealthServer(s.Server(), healthcheck.GRPCHealthChecker())
 	})
 	if err != nil {
 		logger.Fatal(errors.Wrap(err, "setup grpc server"))

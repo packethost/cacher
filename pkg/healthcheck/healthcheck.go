@@ -24,7 +24,7 @@ func (s *HealthChecker) Watch(_ *grpc_health_v1.HealthCheckRequest, server grpc_
 	})
 }
 
-// GrpcHealthChecker requests to check the grpc server health.
-func GrpcHealthChecker() *HealthChecker {
+// GRPCHealthChecker requests to check the grpc server health.
+func GRPCHealthChecker() *HealthChecker {
 	return &HealthChecker{}
 }
