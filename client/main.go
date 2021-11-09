@@ -16,13 +16,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-type CacherClient struct {
-	cacher.CacherClient
-}
-
-// New returns a new cacher client for the requested facility.
-// It respects the following environment variables: CACHER_USE_TLS, CACHER_CERT_URL, and CACHER_GRPC_AUTHORITY.
-func New(facility string) (CacherClient, error) {
+func connect(facility string) (*grpc.ClientConn, error) {
 	// setup OpenTelemetry autoinstrumentation automatically on the gRPC client
 	dialOpts := []grpc.DialOption{
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
@@ -36,25 +30,25 @@ func New(facility string) (CacherClient, error) {
 		if certURL == "" {
 			auth, err := lookupAuthority("http", facility)
 			if err != nil {
-				return CacherClient{}, err
+				return nil, err
 			}
 			certURL = "https://" + auth + "/cert"
 		}
 		resp, err := http.Get(certURL)
 		if err != nil {
-			return CacherClient{}, errors.Wrap(err, "fetch cert")
+			return nil, errors.Wrap(err, "fetch cert")
 		}
 		defer resp.Body.Close()
 
 		certs, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return CacherClient{}, errors.Wrap(err, "read cert")
+			return nil, errors.Wrap(err, "read cert")
 		}
 
 		cp := x509.NewCertPool()
 		ok := cp.AppendCertsFromPEM(certs)
 		if !ok {
-			return CacherClient{}, errors.New("parsing cert")
+			return nil, errors.New("parsing cert")
 		}
 		creds := credentials.NewClientTLSFromCert(cp, "")
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
@@ -65,15 +59,28 @@ func New(facility string) (CacherClient, error) {
 	if grpcAuthority == "" {
 		grpcAuthority, err = lookupAuthority("grpc", facility)
 		if err != nil {
-			return CacherClient{}, err
+			return nil, err
 		}
 	}
-
 	conn, err := grpc.Dial(grpcAuthority, dialOpts...)
 	if err != nil {
-		return CacherClient{}, errors.Wrap(err, "connect to cacher")
+		return nil, errors.Wrap(err, "connect to cacher")
 	}
 
+	return conn, nil
+}
+
+type CacherClient struct {
+	cacher.CacherClient
+}
+
+// New returns a new cacher client for the requested facility.
+// It respects the following environment variables: CACHER_USE_TLS, CACHER_CERT_URL, and CACHER_GRPC_AUTHORITY.
+func New(facility string) (CacherClient, error) {
+	conn, err := connect(facility)
+	if err != nil {
+		return CacherClient{}, err
+	}
 	return CacherClient{
 		CacherClient: cacher.NewCacherClient(conn),
 	}, nil
