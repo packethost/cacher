@@ -72,6 +72,7 @@ func connect(facility string) (*grpc.ClientConn, error) {
 
 type CacherClient struct {
 	cacher.CacherClient
+	Conn *grpc.ClientConn
 }
 
 // New returns a new cacher client for the requested facility.
@@ -83,6 +84,7 @@ func New(facility string) (CacherClient, error) {
 	}
 	return CacherClient{
 		CacherClient: cacher.NewCacherClient(conn),
+		Conn:         conn,
 	}, nil
 }
 
