@@ -7,7 +7,7 @@ require (
 	github.com/gammazero/workerpool v0.0.0-20200311205957-7b00833861c6
 	github.com/google/uuid v1.1.2
 	github.com/packethost/packngo v0.1.1-0.20180510203711-dff6ec250ba6
-	github.com/packethost/pkg v0.0.0-20211028142614-27d2111fdd5f
+	github.com/packethost/pkg v0.0.0-20211110202003-387414657e83
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/satori/go.uuid v1.2.0
