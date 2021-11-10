@@ -16,9 +16,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// New returns a new cacher client for the requested facility.
-// It respects the following environment variables: CACHER_USE_TLS, CACHER_CERT_URL, and CACHER_GRPC_AUTHORITY.
-func New(facility string) (cacher.CacherClient, error) {
+func connect(facility string) (*grpc.ClientConn, error) {
 	// setup OpenTelemetry autoinstrumentation automatically on the gRPC client
 	dialOpts := []grpc.DialOption{
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
@@ -64,12 +62,30 @@ func New(facility string) (cacher.CacherClient, error) {
 			return nil, err
 		}
 	}
-
 	conn, err := grpc.Dial(grpcAuthority, dialOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "connect to cacher")
 	}
-	return cacher.NewCacherClient(conn), nil
+
+	return conn, nil
+}
+
+type CacherClient struct {
+	cacher.CacherClient
+	Conn *grpc.ClientConn
+}
+
+// New returns a new cacher client for the requested facility.
+// It respects the following environment variables: CACHER_USE_TLS, CACHER_CERT_URL, and CACHER_GRPC_AUTHORITY.
+func New(facility string) (CacherClient, error) {
+	conn, err := connect(facility)
+	if err != nil {
+		return CacherClient{}, err
+	}
+	return CacherClient{
+		CacherClient: cacher.NewCacherClient(conn),
+		Conn:         conn,
+	}, nil
 }
 
 // lookupAuthority does a DNS SRV record lookup for the service in a facility's

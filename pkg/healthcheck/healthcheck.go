@@ -19,12 +19,18 @@ func (s *HealthChecker) Check(_ context.Context, _ *grpc_health_v1.HealthCheckRe
 
 // Watch streams the server status change.
 func (s *HealthChecker) Watch(_ *grpc_health_v1.HealthCheckRequest, server grpc_health_v1.Health_WatchServer) error {
-	return server.Send(&grpc_health_v1.HealthCheckResponse{
+	err := server.Send(&grpc_health_v1.HealthCheckResponse{
 		Status: grpc_health_v1.HealthCheckResponse_SERVING,
 	})
+	if err != nil {
+		return err
+	}
+
+	<-server.Context().Done()
+	return nil
 }
 
-// GrpcHealthChecker requests to check the grpc server health.
-func GrpcHealthChecker() *HealthChecker {
+// GRPCHealthChecker requests to check the grpc server health.
+func GRPCHealthChecker() *HealthChecker {
 	return &HealthChecker{}
 }

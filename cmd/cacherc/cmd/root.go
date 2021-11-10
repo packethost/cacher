@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/packethost/cacher/client"
-	"github.com/packethost/cacher/protos/cacher"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
@@ -22,7 +21,7 @@ var rootCmd = &cobra.Command{
 	Short: "cacher client",
 }
 
-func connectGRPC(facility string, err error) cacher.CacherClient {
+func connectGRPC(facility string, err error) client.CacherClient {
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +59,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "facility", "f", "", "used to build grcp and http urls")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "facility", "f", "", "used to build grpc and http urls")
 }
 
 // initConfig reads in config file and ENV variables if set.
