@@ -1,6 +1,7 @@
 package hardware
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -401,5 +402,35 @@ func TestByMAC(t *testing.T) {
 		j, err := hw.ByMAC("00:00:00:00:00:" + mac)
 		assert.NoError(err)
 		assert.Equal(j2, j)
+	}
+}
+
+func TestTraceparent(t *testing.T) {
+	assert := require.New(t)
+
+	tps := []string{
+		"",
+		"00-00000000000000000000000000000000-0000000000000000-00",
+		"00-6d2cd79aa1c04f5a6f579cdb932e07b3-d376ef33e09b1e05-01",
+		"00-d538560f791eb96185f34aa2bf6082a9-b98f3fb3157fae01-01",
+	}
+
+	jsons := []string{
+		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[0] + `"}`,
+		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[1] + `"}`,
+		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[2] + `"}`,
+		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[3] + `"}`,
+	}
+
+	hw := New()
+	for i, j := range jsons {
+		id, err := hw.Add(j)
+		assert.Nil(err)
+		js, err := hw.ByID(id) // retrieve the hw and make sure the tp survives
+		assert.Nil(err)
+		inst := hardware{}
+		err = json.Unmarshal([]byte(js), &inst)
+		assert.Nil(err)
+		assert.Equal(tps[i], inst.Traceparent)
 	}
 }
