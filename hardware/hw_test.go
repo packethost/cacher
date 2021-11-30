@@ -416,10 +416,10 @@ func TestTraceparent(t *testing.T) {
 	}
 
 	jsons := []string{
-		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[0] + `"}`,
-		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[1] + `"}`,
-		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[2] + `"}`,
-		`{"id": "` + uuid.New().String() + `", "_traceparent": "` + tps[3] + `"}`,
+		`{"id": "` + uuid.New().String() + `", "traceparent": "` + tps[0] + `"}`,
+		`{"id": "` + uuid.New().String() + `", "traceparent": "` + tps[1] + `"}`,
+		`{"id": "` + uuid.New().String() + `", "traceparent": "` + tps[2] + `"}`,
+		`{"id": "` + uuid.New().String() + `", "traceparent": "` + tps[3] + `"}`,
 	}
 
 	hw := New()

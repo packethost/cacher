@@ -48,7 +48,8 @@ type hardware struct {
 			MAC string
 		}
 	} `json:"network_ports"`
-	Traceparent string `json:"_traceparent"` // for otel trace propagation
+	// in-band propagation of w3c traceparent so it can make it to boots
+	Traceparent string `json:"traceparent"`
 }
 
 // The Option type describes functions that operate on Hardeare during New.
