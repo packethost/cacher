@@ -72,7 +72,7 @@ func (s *server) Push(ctx context.Context, in *cacher.PushRequest) (*cacher.Empt
 }
 
 // Ingest implements cacher.CacherServer.
-func (s *server) Ingest(ctx context.Context, _ *cacher.Empty) (*cacher.Empty, error) {
+func (s *server) Ingest(ctx context.Context, _ *cacher.Empty) (*cacher.Empty, error) { //nolint:nolintlint,revive
 	trace.SpanFromContext(ctx).AddEvent("ingest")
 	logger.Info("ingest")
 	labels := prometheus.Labels{"method": "Ingest", "op": ""}

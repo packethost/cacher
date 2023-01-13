@@ -1,10 +1,10 @@
-FROM golang:1.14-alpine as builder
+FROM golang:1.18-alpine as builder
 RUN apk add --update make
 ADD ./ /src
 WORKDIR /src
 RUN make
 
-FROM alpine:3.11
+FROM alpine:3.17
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "/cacher" ]

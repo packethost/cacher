@@ -169,7 +169,7 @@ func copyInEach(hw *hardware.Hardware, data []map[string]interface{}) error {
 	return nil
 }
 
-func (s *server) ingest(ctx context.Context, api *url.URL, facility string) error {
+func (s *server) ingest(ctx context.Context, api *url.URL, facility string) error { //nolint:nolintlint,revive
 	if env.Bool("CACHER_NO_INGEST") {
 		cacherState.Set(2)
 
