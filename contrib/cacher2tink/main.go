@@ -22,7 +22,7 @@ cacherc -f dc13 mac 1c:34:da:42:b8:34 | ./cacher2tink >tink.json
 
 func main() {
 	if len(os.Args) > 1 {
-		fmt.Fprintln(os.Stderr, usage)
+		fmt.Fprint(os.Stderr, usage)
 
 		if len(os.Args) == 2 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
 			os.Exit(0)

@@ -3,7 +3,7 @@ package client
 import (
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -40,7 +40,7 @@ func connect(facility string) (*grpc.ClientConn, error) {
 		}
 		defer resp.Body.Close()
 
-		certs, err := ioutil.ReadAll(resp.Body)
+		certs, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "read cert")
 		}
