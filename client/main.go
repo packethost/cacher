@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func connect(facility string) (*grpc.ClientConn, error) {
@@ -24,7 +25,7 @@ func connect(facility string) (*grpc.ClientConn, error) {
 
 	useTLS := env.Bool("CACHER_USE_TLS", true)
 	if !useTLS {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
 		certURL := env.Get("CACHER_CERT_URL")
 		if certURL == "" {
