@@ -17,4 +17,4 @@ RUN apk add --no-cache --update --upgrade ca-certificates
 RUN apk add --no-cache --update --upgrade --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing cfssl
 COPY entrypoint.sh /entrypoint.sh
 COPY tls /tls
-COPY --from=builder /src/cacher-linux-x86_64 /cacher
+COPY --from=builder /src/cacher /cacher
