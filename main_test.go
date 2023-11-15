@@ -16,7 +16,7 @@ func TestNoIngest(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		cmd := exec.CommandContext(ctx, "./cacher-linux-x86_64")
+		cmd := exec.CommandContext(ctx, "./cacher")
 		cmd.Env = []string{}
 		err := cmd.Run()
 
@@ -27,7 +27,7 @@ func TestNoIngest(t *testing.T) {
 		assert.Equal(t, 2, eerr.ExitCode())
 	})
 	t.Run("IngestDisabled", func(t *testing.T) {
-		cmd := exec.Command("./cacher-linux-x86_64")
+		cmd := exec.Command("./cacher")
 		cmd.Env = []string{
 			"CACHER_NO_INGEST=true",
 		}

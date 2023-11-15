@@ -8,12 +8,7 @@ That is all.
 
 ### Build
 
-From the root directory execute `make cli`
-
-or
-
-Enter into the cmd/cacher folder and execute `go build .`
-
+From the root directory execute `make cli` (file will be named `cmd/cacherc/cacherc`)
 
 ### Example output
 
