@@ -12,6 +12,7 @@ import (
 	"github.com/packethost/pkg/env"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/filters"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -20,7 +21,7 @@ import (
 func connect(facility string) (*grpc.ClientConn, error) {
 	// setup OpenTelemetry autoinstrumentation automatically on the gRPC client
 	dialOpts := []grpc.DialOption{
-		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor(otelgrpc.WithInterceptorFilter(filters.Not(filters.HealthCheck())))),
 	}
 
 	useTLS := env.Bool("CACHER_USE_TLS", true)
