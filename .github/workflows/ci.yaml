@@ -20,6 +20,8 @@ jobs:
     # Workaround for missing checksums caused by https://github.com/golang/go/issues/44129
     - name: gomod fix
       run: go env -w GOFLAGS=-mod=mod
+    - name: go mod tidy
+      run: go mod tidy
     - name: lint
       run: make lint
     - name: tests
