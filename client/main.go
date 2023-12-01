@@ -21,6 +21,7 @@ import (
 func connect(facility string) (*grpc.ClientConn, error) {
 	// setup OpenTelemetry autoinstrumentation automatically on the gRPC client
 	dialOpts := []grpc.DialOption{
+		//nolint:staticcheck // UnaryClientInterceptor is deprecated but requires refactor
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor(otelgrpc.WithInterceptorFilter(filters.Not(filters.HealthCheck())))),
 	}
 
