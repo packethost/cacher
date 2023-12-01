@@ -10,9 +10,9 @@ jobs:
       CGO_ENABLED: 0
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v4
       with:
         go-version: '1.18'
     - name: goimports
@@ -36,9 +36,9 @@ jobs:
     needs: [validation]
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v4
       with:
         go-version: '1.18'
     - name: Set up Docker Buildx
