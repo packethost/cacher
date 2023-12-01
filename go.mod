@@ -1,6 +1,6 @@
 module github.com/packethost/cacher
 
-go 1.18
+go 1.21
 
 require (
 	github.com/equinix-labs/otel-init-go v0.0.9
