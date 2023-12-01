@@ -2,7 +2,7 @@
 # BEGIN: lint-install --makefile lint.mk --shell=warn --dockerfile=warn .
 # http://github.com/tinkerbell/lint-install
 
-GOLINT_VERSION ?= v1.49.0
+GOLINT_VERSION ?= v1.55.2
 HADOLINT_VERSION ?= v2.7.0
 SHELLCHECK_VERSION ?= v0.7.2
 LINT_OS := $(shell uname)
