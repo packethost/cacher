@@ -24,7 +24,7 @@ type Hardware struct {
 	logger *log.Logger
 	mu     sync.RWMutex
 	hw     map[id]struct {
-		j    string
+		j    string // raw json record
 		ips  map[netaddr.IP]bool
 		macs map[mac]bool
 	}
@@ -48,6 +48,8 @@ type hardware struct {
 			MAC string
 		}
 	} `json:"network_ports"`
+	// in-band propagation of w3c traceparent so it can make it to boots
+	Traceparent string `json:"traceparent"`
 }
 
 // The Option type describes functions that operate on Hardeare during New.
